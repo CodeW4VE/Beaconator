@@ -161,7 +161,34 @@ public final class Keys {
 		ClientTickEvents.END_CLIENT_TICK.register(Keys::tick);
 	}
 
+	private static boolean migrated;
+
+	/**
+	 * Puts Shift + B back on the screen binding for anyone who ran an earlier build.
+	 *
+	 * <p>{@code options.txt} remembers every binding, including the ones left unbound, so changing
+	 * a default never reaches a player who has already started the game once: opening the screen
+	 * used to be a special case inside the edit mode key rather than a binding, and that saved
+	 * "unknown" beats the new default. Runs on the first tick, when the options are loaded, and
+	 * only touches a binding nobody has set to anything.
+	 */
+	private static void migrateBindings(Minecraft mc) {
+		migrated = true;
+
+		if (!OPEN_SCREEN.isUnbound()) {
+			return;
+		}
+
+		mc.options.setKey(OPEN_SCREEN, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+		mc.options.save();
+		KeyMapping.resetMapping();
+	}
+
 	private static void tick(Minecraft mc) {
+		if (!migrated) {
+			migrateBindings(mc);
+		}
+
 		if (triggered(OPEN_SCREEN)) {
 			BeaconatorScreen.open();
 		}
