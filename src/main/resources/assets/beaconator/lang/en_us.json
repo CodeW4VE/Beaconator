@@ -1,0 +1,13 @@
+{
+	"key.categories.beaconator": "Beaconator",
+	"key.beaconator.toggle_edit": "Edit mode",
+	"key.beaconator.open_screen": "Open screen",
+	"key.beaconator.set_center": "Set centre",
+	"key.beaconator.toggle_render": "Render",
+	"key.beaconator.toggle_beams": "Beams",
+	"key.beaconator.toggle_easy_place": "Easy place",
+	"key.beaconator.layer_up": "Layer up",
+	"key.beaconator.layer_down": "Layer down",
+	"key.beaconator.scan": "Scan world",
+	"key.beaconator.undo": "Undo"
+}

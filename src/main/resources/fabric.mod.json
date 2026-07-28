@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "beaconator",
+	"version": "${version}",
+	"name": "Beaconator",
+	"description": "Plan and build beacon perimeters. Generates the beacon grid from a single center point, draws each beacon's real coverage volume, tracks what is already placed, and helps you build it with assisted placement and layers. No schematic block highlighting noise.",
+	"authors": [
+		"tvtvirus"
+	],
+	"contact": {
+		"homepage": "https://w4ve.xyz/",
+		"sources": "https://github.com/CodeW4VE/Beaconator"
+	},
+	"license": "MIT",
+	"icon": "assets/beaconator/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"xyz.w4ve.beaconator.BeaconatorClient"
+		],
+		"modmenu": [
+			"xyz.w4ve.beaconator.client.gui.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"beaconator.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": ">=1.21 <1.21.2",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

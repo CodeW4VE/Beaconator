@@ -1,0 +1,13 @@
+{
+	"key.categories.beaconator": "Beaconator",
+	"key.beaconator.toggle_edit": "Modo edición",
+	"key.beaconator.open_screen": "Abrir pantalla",
+	"key.beaconator.set_center": "Poner el centro",
+	"key.beaconator.toggle_render": "Render",
+	"key.beaconator.toggle_beams": "Haces",
+	"key.beaconator.toggle_easy_place": "Easy place",
+	"key.beaconator.layer_up": "Capa arriba",
+	"key.beaconator.layer_down": "Capa abajo",
+	"key.beaconator.scan": "Escanear",
+	"key.beaconator.undo": "Deshacer"
+}
