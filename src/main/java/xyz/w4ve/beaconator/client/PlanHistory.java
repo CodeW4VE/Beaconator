@@ -84,7 +84,7 @@ public final class PlanHistory {
 		Step step = STEPS.pop();
 
 		for (Map.Entry<NodeKey, NodeStatus> entry : step.before().entrySet()) {
-			plan.setStatus(entry.getKey(), entry.getValue());
+			PlanManager.changeStatus(entry.getKey(), entry.getValue());
 		}
 
 		PlanManager.markDirty();

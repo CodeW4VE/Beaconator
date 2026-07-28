@@ -107,11 +107,9 @@ public final class ScanCache {
 
 		// Only pending and placed flip automatically. Excluded and removed are the player's call.
 		if (status == NodeStatus.PENDING && scan.beaconsPlaced()) {
-			plan.setStatus(node.key(), NodeStatus.PLACED);
-			PlanManager.markDirty();
+			PlanManager.changeStatus(node.key(), NodeStatus.PLACED);
 		} else if (status == NodeStatus.PLACED && !scan.beaconsPlaced()) {
-			plan.setStatus(node.key(), NodeStatus.PENDING);
-			PlanManager.markDirty();
+			PlanManager.changeStatus(node.key(), NodeStatus.PENDING);
 		}
 
 		return scan;

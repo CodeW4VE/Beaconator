@@ -31,6 +31,7 @@ import xyz.w4ve.beaconator.client.PlanHistory;
 import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.client.map.MapStore;
 import xyz.w4ve.beaconator.client.map.MapView;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 import xyz.w4ve.beaconator.client.scan.ScanCache;
 import xyz.w4ve.beaconator.client.scan.WorldGridDetector;
 import xyz.w4ve.beaconator.client.scan.WorldScanner;
@@ -410,7 +411,27 @@ public class BeaconatorScreen extends Screen {
 		addRenderableWidget(Button.builder(Lang.c("plan.export"), button -> exportSchematic())
 				.bounds(right, buttonsY + 48, 150, 20).build());
 
-		label(width / 2, buttonsY + 76, () -> PlanManager.hasPlan()
+		// Only offered where it can work: a server without the mod never registers the channel.
+		Button share = Button.builder(
+						Lang.c(ClientSync.shared() ? "plan.unpublish" : "plan.publish"), button -> {
+							if (ClientSync.shared()) {
+								ClientSync.unpublish();
+								setStatus(Lang.t("plan.unpublished"), OK_COLOR);
+							} else if (ClientSync.publish()) {
+								setStatus(Lang.t("plan.published"), OK_COLOR);
+							}
+
+							rebuildWidgets();
+						})
+				.bounds(left, buttonsY + 72, 150, 20).build();
+		share.active = ClientSync.available() && PlanManager.hasPlan();
+		addRenderableWidget(share);
+
+		if (!ClientSync.available()) {
+			label(right + 75, buttonsY + 78, () -> Lang.t("plan.no_server"), () -> DIM_COLOR, true);
+		}
+
+		label(width / 2, buttonsY + 100, () -> PlanManager.hasPlan()
 				? PlanManager.plan().dimension() + "  ·  " + PlanManager.plan().extents().nodeCount()
 						+ " " + Lang.t("nodes")
 				: Lang.t("no_plan"), () -> DIM_COLOR, true);

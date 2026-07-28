@@ -87,6 +87,25 @@ public final class PlanStore {
 		return Files.deleteIfExists(planPath(worldId, name));
 	}
 
+	/**
+	 * The plan as the same JSON that goes on disk. Used to put a plan on the wire: the format is
+	 * already written, already versioned by being a plain DTO, and already survives a round trip,
+	 * so a second encoding for the network would only be a second thing to keep in step.
+	 */
+	public static String toJson(PerimeterPlan plan) {
+		return GSON.toJson(toDto(plan));
+	}
+
+	/** Reads back {@link #toJson}. Returns null when the text is not a plan. */
+	public static PerimeterPlan fromJson(String json, String name) {
+		try {
+			PlanDto dto = GSON.fromJson(json, PlanDto.class);
+			return dto == null ? null : fromDto(dto, name);
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
 	private static String sanitize(String raw) {
 		String cleaned = raw.trim().replaceAll("[^A-Za-z0-9._-]", "_");
 		return cleaned.isEmpty() ? "unnamed" : cleaned;

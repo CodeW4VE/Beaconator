@@ -203,6 +203,12 @@ public final class Lang {
 
 		// hud
 		put("hud.edit", "edit", "edición");
+		put("hud.shared", "shared", "compartido");
+		put("plan.publish", "Share with the server", "Compartir con el server");
+		put("plan.unpublish", "Stop sharing", "Dejar de compartir");
+		put("plan.published", "Sent to the server. Everyone with the mod sees it now.", "Enviado al server. Todos los que tengan el mod lo ven.");
+		put("plan.unpublished", "Asked the server to drop the shared plan", "Le pedí al server que suelte el plan compartido");
+		put("plan.no_server", "This server does not have Beaconator", "Este server no tiene Beaconator");
 		put("hud.grid", "%d x %d nodes (ring %d)", "%d x %d nodos (anillo %d)");
 		put("hud.grid_custom", "%d x %d nodes (custom sides)", "%d x %d nodos (lados a mano)");
 		put("hud.setup", "%d beacon(s) per node, level %d, spacing %d",

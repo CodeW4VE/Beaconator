@@ -6,24 +6,25 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import xyz.w4ve.beaconator.client.BeaconatorHud;
 import xyz.w4ve.beaconator.client.Keys;
 import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.client.map.MapStore;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 import xyz.w4ve.beaconator.command.BeaconatorCommand;
 import xyz.w4ve.beaconator.config.BeaconatorConfig;
 import xyz.w4ve.beaconator.render.PerimeterRenderer;
 
 public class BeaconatorClient implements ClientModInitializer {
-	public static final String MOD_ID = "beaconator";
-	public static final Logger LOGGER = LoggerFactory.getLogger("Beaconator");
+	public static final String MOD_ID = BeaconatorMod.MOD_ID;
+	public static final Logger LOGGER = BeaconatorMod.LOGGER;
 
 	@Override
 	public void onInitializeClient() {
 		BeaconatorConfig.get();
 		Keys.init();
 		BeaconatorCommand.init();
+		ClientSync.init();
 
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(PerimeterRenderer::render);
 		HudRenderCallback.EVENT.register(BeaconatorHud::render);

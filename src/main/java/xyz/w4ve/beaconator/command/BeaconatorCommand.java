@@ -39,6 +39,7 @@ import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.model.PyramidCalculator;
 import xyz.w4ve.beaconator.model.RowAxis;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 
 /** The {@code /bea} client command. Nothing here is sent to the server. */
 public final class BeaconatorCommand {
@@ -223,6 +224,30 @@ public final class BeaconatorCommand {
 		}));
 
 		root.then(ClientCommandManager.literal("scan").executes(context -> scan(context.getSource())));
+
+		// Sharing the plan with the server. The server enforces that only operators can replace
+		// it; asking here as well would only tell a lie when the answer disagrees.
+		root.then(ClientCommandManager.literal("publish").executes(context -> {
+			if (!ClientSync.available()) {
+				return error(context.getSource(), "This server does not have Beaconator installed");
+			}
+
+			if (!PlanManager.hasPlan()) {
+				return error(context.getSource(), Lang.t("no_plan"));
+			}
+
+			ClientSync.publish();
+			return reply(context.getSource(), "Sent the plan to the server");
+		}));
+
+		root.then(ClientCommandManager.literal("unpublish").executes(context -> {
+			if (!ClientSync.available()) {
+				return error(context.getSource(), "This server does not have Beaconator installed");
+			}
+
+			ClientSync.unpublish();
+			return reply(context.getSource(), "Asked the server to drop the shared plan");
+		}));
 
 		root.then(ClientCommandManager.literal("undo").executes(context -> {
 			String what = PlanHistory.undo(PlanManager.plan());
@@ -675,7 +700,7 @@ public final class BeaconatorCommand {
 		PlanHistory.record(plan, keys, Lang.t("map.undo_area"));
 
 		for (NodeKey key : keys) {
-			plan.setStatus(key, status);
+			PlanManager.changeStatus(key, status);
 		}
 
 		int changed = keys.size();

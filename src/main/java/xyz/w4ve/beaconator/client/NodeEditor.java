@@ -7,6 +7,7 @@ import xyz.w4ve.beaconator.model.GridNode;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 
 /**
  * Turns clicks into node state changes while edit mode is on.
@@ -30,6 +31,7 @@ public final class NodeEditor {
 		PerimeterPlan plan = PlanManager.plan();
 		PlanHistory.record(plan, key, "node");
 		NodeStatus status = plan.toggleRemoved(key);
+		ClientSync.sendNode(key, status);
 		announce(plan, key, status);
 		return true;
 	}
@@ -45,6 +47,7 @@ public final class NodeEditor {
 		PerimeterPlan plan = PlanManager.plan();
 		PlanHistory.record(plan, key, "node");
 		NodeStatus status = plan.toggleExcluded(key);
+		ClientSync.sendNode(key, status);
 		announce(plan, key, status);
 		return true;
 	}
@@ -57,7 +60,7 @@ public final class NodeEditor {
 		}
 
 		PlanHistory.record(plan, key, "node");
-		plan.setStatus(key, status);
+		PlanManager.changeStatus(key, status);
 		announce(plan, key, status);
 	}
 

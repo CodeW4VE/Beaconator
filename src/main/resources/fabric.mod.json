@@ -13,8 +13,11 @@
 	},
 	"license": "MIT",
 	"icon": "assets/beaconator/icon.png",
-	"environment": "client",
+	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"xyz.w4ve.beaconator.BeaconatorMod"
+		],
 		"client": [
 			"xyz.w4ve.beaconator.BeaconatorClient"
 		],

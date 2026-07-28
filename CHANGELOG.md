@@ -21,6 +21,19 @@ First build.
 - When Litematica is installed, easy place follows its toggle instead of fighting it for the
   same click. Read by reflection, wrapped in try/catch, no code taken from it.
 
+### Sharing a plan with the server
+
+- The same jar now runs on a Fabric server. Put it there and one plan is shared by everyone:
+  an operator sends theirs with `/bea publish` or the button in the Plan tab, and from then on
+  every client with the mod gets it on join and sees every node the others place, exclude or
+  drop, live. The HUD says `[shared]` so you know your clicks are going out.
+- Anyone with the mod can mark nodes. Replacing or taking down the shared plan is for operators.
+  Digging a perimeter is teamwork; asking an admin to tick off each finished node would be worse
+  than not sharing it at all.
+- The plan lives in the world folder, so a copy of the world carries the perimeter with it.
+- Client-side only, none of this runs and the mod behaves exactly as before. A vanilla client on
+  a server that has the mod is never sent anything.
+
 ### Grid
 
 - Concentric rings from a single centre point: 1, 9, 25, 49 nodes and up, `(2n+1)^2`.

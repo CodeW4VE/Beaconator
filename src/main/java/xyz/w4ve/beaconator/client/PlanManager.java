@@ -11,7 +11,9 @@ import xyz.w4ve.beaconator.BeaconatorClient;
 import xyz.w4ve.beaconator.config.BeaconatorConfig;
 import xyz.w4ve.beaconator.io.PlanStore;
 import xyz.w4ve.beaconator.model.GridGenerator;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 import xyz.w4ve.beaconator.model.NodeKey;
+import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 
 /** The plan being edited right now, plus what the player is currently pointing at. */
@@ -39,7 +41,26 @@ public final class PlanManager {
 		plan = newPlan;
 		hovered = null;
 		dirty = true;
+		ClientSync.detach();
 		rememberOpenPlan();
+	}
+
+	/**
+	 * The one way a node changes state. Applies it locally and, when the open plan is the server's
+	 * shared one, tells the server so the rest of the team sees it.
+	 *
+	 * <p>Everything funnels through here on purpose: clicking on the map, the automatic scan
+	 * noticing a beacon went in, undo, and {@code /bea fill}. A second path that skipped the
+	 * network would show up as nodes that are green for you and not for anyone else.
+	 */
+	public static void changeStatus(NodeKey key, NodeStatus status) {
+		if (plan == null || plan.statusAt(key) == status) {
+			return;
+		}
+
+		plan.setStatus(key, status);
+		dirty = true;
+		ClientSync.sendNode(key, status);
 	}
 
 	public static void closePlan() {

@@ -14,6 +14,7 @@ import xyz.w4ve.beaconator.model.MaterialTally;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.client.net.ClientSync;
 
 /** Small readout of the active plan, so the numbers are on screen while you edit. */
 public final class BeaconatorHud {
@@ -38,6 +39,11 @@ public final class BeaconatorHud {
 		List<Integer> colors = new ArrayList<>();
 
 		String title = "Beaconator: " + plan.name();
+
+		// Worth a word on screen: on a shared plan every click you make is seen by everyone else.
+		if (ClientSync.shared()) {
+			title += " [" + Lang.t("hud.shared") + "]";
+		}
 
 		if (PlanManager.editMode()) {
 			title += " [" + Lang.t("hud.edit") + "]";

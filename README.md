@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Minecraft](https://img.shields.io/badge/minecraft-1.21-green.svg)](https://fabricmc.net/)
 
-A Fabric client mod for planning and building **beacon perimeters**.
+A Fabric mod for planning and building **beacon perimeters**. Client side on its own; put the
+same jar on the server and the whole team shares one plan.
 
 Drop one beacon in the middle, scroll to grow the grid, and Beaconator works out where every
 other beacon goes, draws exactly how much ground each one covers, and keeps track of which ones
@@ -34,6 +35,10 @@ Beaconator only does perimeters, so it can do them properly.
 - **Assisted placement** that picks the right block out of your hotbar and refuses to let you put plan blocks where the plan wants none.
 - **Layer filter** to work one course at a time.
 - **Litematica import and export**, so you can pick up a perimeter you already built and hand the schematic to people who do not run this mod. If Litematica is installed, easy place follows its toggle instead of fighting it.
+- **A plan shared by the server.** Drop the jar on a Fabric server and one plan belongs to
+  everyone: it arrives when you join, and every node anyone places, excludes or drops shows up
+  live for the rest. Publishing it is an operator's call, marking nodes is anybody's. Without the
+  mod on the server nothing changes, and a vanilla client is never sent anything.
 - **English and Spanish**, switched from the screen rather than from the game language.
 - **Every key rebindable** from the mod's own Keys tab, and the screen opens from Mod Menu too.
 
