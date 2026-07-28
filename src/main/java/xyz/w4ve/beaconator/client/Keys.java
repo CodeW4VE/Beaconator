@@ -22,12 +22,23 @@ import xyz.w4ve.beaconator.model.PyramidCalculator;
 
 /** Key bindings, the scroll wheel behaviour in edit mode, and the per tick housekeeping. */
 public final class Keys {
+	/**
+	 * Shift, control and alt on top of a binding, which vanilla {@link KeyMapping} has no notion
+	 * of. Stored per binding in the config as a bit mask, so `G`, `Shift + G` and
+	 * `Ctrl + Shift + G` can be three different things.
+	 */
+	public static final int SHIFT = 1;
+	public static final int CONTROL = 2;
+	public static final int ALT = 4;
+
 	private static final String CATEGORY = "key.categories.beaconator";
 	private static final List<KeyMapping> ALL = new ArrayList<>();
 	private static final Map<KeyMapping, Integer> DEFAULTS = new LinkedHashMap<>();
+	private static final Map<String, Integer> DEFAULT_MODIFIERS = new LinkedHashMap<>();
 
 	public static final KeyMapping TOGGLE_EDIT = register("toggle_edit", GLFW.GLFW_KEY_B);
-	public static final KeyMapping OPEN_SCREEN = register("open_screen", InputConstants.UNKNOWN.getValue());
+	/** Shift + B, a real binding now rather than a special case inside the edit mode handler. */
+	public static final KeyMapping OPEN_SCREEN = register("open_screen", GLFW.GLFW_KEY_B, SHIFT);
 	public static final KeyMapping SET_CENTER = register("set_center", InputConstants.UNKNOWN.getValue());
 	public static final KeyMapping TOGGLE_RENDER = register("toggle_render", InputConstants.UNKNOWN.getValue());
 	/**
@@ -46,11 +57,85 @@ public final class Keys {
 	}
 
 	private static KeyMapping register(String name, int key) {
+		return register(name, key, 0);
+	}
+
+	private static KeyMapping register(String name, int key, int modifiers) {
 		KeyMapping mapping = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.beaconator." + name, InputConstants.Type.KEYSYM, key, CATEGORY));
 		ALL.add(mapping);
 		DEFAULTS.put(mapping, key);
+		DEFAULT_MODIFIERS.put(mapping.getName(), modifiers);
 		return mapping;
+	}
+
+	// ------------------------------------------------------------------ modifiers
+
+	/**
+	 * True when the modifiers held right now are exactly the ones this binding wants.
+	 *
+	 * <p>Exact: a binding on plain `G` does not fire while shift is held, otherwise every
+	 * combination would also trigger the plain binding sitting underneath it.
+	 */
+	public static boolean modifiersMatch(KeyMapping mapping) {
+		return heldModifiers() == modifiersOf(mapping);
+	}
+
+	public static int modifiersOf(KeyMapping mapping) {
+		return BeaconatorConfig.get().keyModifiers.getOrDefault(mapping.getName(),
+				DEFAULT_MODIFIERS.getOrDefault(mapping.getName(), 0));
+	}
+
+	/** Always writes the value, zero included, so a default modifier can be taken back off. */
+	public static void setModifiers(KeyMapping mapping, int modifiers) {
+		BeaconatorConfig config = BeaconatorConfig.get();
+		config.keyModifiers.put(mapping.getName(), modifiers);
+		config.save();
+	}
+
+	public static int heldModifiers() {
+		return (Screen.hasShiftDown() ? SHIFT : 0)
+				| (Screen.hasControlDown() ? CONTROL : 0)
+				| (Screen.hasAltDown() ? ALT : 0);
+	}
+
+	/** `Ctrl + Shift + G`, the way it should read on a button. */
+	public static String describe(KeyMapping mapping) {
+		String key = mapping.getTranslatedKeyMessage().getString();
+
+		if (mapping.isUnbound()) {
+			return key;
+		}
+
+		int modifiers = modifiersOf(mapping);
+		StringBuilder text = new StringBuilder();
+
+		if ((modifiers & CONTROL) != 0) {
+			text.append("Ctrl + ");
+		}
+
+		if ((modifiers & SHIFT) != 0) {
+			text.append("Shift + ");
+		}
+
+		if ((modifiers & ALT) != 0) {
+			text.append("Alt + ");
+		}
+
+		return text.append(key).toString();
+	}
+
+	/** A click on this binding, once the modifiers agree. Replaces bare {@code consumeClick()}. */
+	private static boolean triggered(KeyMapping mapping) {
+		boolean matched = false;
+
+		while (mapping.consumeClick()) {
+			// Drain every queued click either way: a click held back by the wrong modifiers must
+			// not fire later when they happen to line up.
+			matched |= modifiersMatch(mapping);
+		}
+
+		return matched;
 	}
 
 	/** Every binding of this mod, for the Keys tab. */
@@ -60,6 +145,8 @@ public final class Keys {
 
 	public static void resetDefaults() {
 		Minecraft minecraft = Minecraft.getInstance();
+		BeaconatorConfig.get().keyModifiers.clear();
+		BeaconatorConfig.get().save();
 
 		for (Map.Entry<KeyMapping, Integer> entry : DEFAULTS.entrySet()) {
 			minecraft.options.setKey(entry.getKey(),
@@ -75,32 +162,22 @@ public final class Keys {
 	}
 
 	private static void tick(Minecraft mc) {
-		while (OPEN_SCREEN.consumeClick()) {
+		if (triggered(OPEN_SCREEN)) {
 			BeaconatorScreen.open();
 		}
 
-		while (TOGGLE_EDIT.consumeClick()) {
-			// Shift opens the screen, so one key covers both without a second binding.
-			if (Screen.hasShiftDown()) {
-				BeaconatorScreen.open();
-				continue;
-			}
-
+		if (triggered(TOGGLE_EDIT)) {
 			if (!PlanManager.hasPlan()) {
-				PlanManager.actionBar(Component.literal("No plan yet. Shift + B opens the screen."));
-				continue;
+				PlanManager.actionBar(Component.literal(
+						"No plan yet. " + describe(OPEN_SCREEN) + " opens the screen."));
+			} else {
+				PlanManager.setEditMode(!PlanManager.editMode());
+				PlanManager.actionBar(Component.literal(
+						PlanManager.editMode() ? "Beaconator edit mode on" : "Beaconator edit mode off"));
 			}
-
-			PlanManager.setEditMode(!PlanManager.editMode());
-			PlanManager.actionBar(Component.literal(
-					PlanManager.editMode() ? "Beaconator edit mode on" : "Beaconator edit mode off"));
 		}
 
-		while (SET_CENTER.consumeClick()) {
-			if (mc.player == null || !PlanManager.hasPlan()) {
-				continue;
-			}
-
+		if (triggered(SET_CENTER) && mc.player != null && PlanManager.hasPlan()) {
 			PerimeterPlan plan = PlanManager.plan();
 			plan.setCenter(mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
 			PlanManager.markDirty();
@@ -108,7 +185,7 @@ public final class Keys {
 					+ mc.player.getBlockX() + ", " + mc.player.getBlockY() + ", " + mc.player.getBlockZ()));
 		}
 
-		while (TOGGLE_RENDER.consumeClick()) {
+		if (triggered(TOGGLE_RENDER)) {
 			BeaconatorConfig config = BeaconatorConfig.get();
 			config.renderCoverage = !config.renderCoverage;
 			config.renderWireframe = config.renderCoverage;
@@ -119,7 +196,7 @@ public final class Keys {
 					config.renderCoverage ? "Beaconator render on" : "Beaconator render off"));
 		}
 
-		while (TOGGLE_BEAMS.consumeClick()) {
+		if (triggered(TOGGLE_BEAMS)) {
 			BeaconatorConfig config = BeaconatorConfig.get();
 			config.showBeams = !config.showBeams;
 			config.save();
@@ -127,7 +204,7 @@ public final class Keys {
 					config.showBeams ? "Beaconator beams on" : "Beaconator beams off"));
 		}
 
-		while (TOGGLE_EASY_PLACE.consumeClick()) {
+		if (triggered(TOGGLE_EASY_PLACE)) {
 			BeaconatorConfig config = BeaconatorConfig.get();
 			config.easyPlace = !config.easyPlace;
 			config.save();
@@ -135,26 +212,22 @@ public final class Keys {
 					config.easyPlace ? "Beaconator easy place on" : "Beaconator easy place off"));
 		}
 
-		while (LAYER_UP.consumeClick()) {
+		if (triggered(LAYER_UP)) {
 			shiftLayer(mc, 1);
 		}
 
-		while (LAYER_DOWN.consumeClick()) {
+		if (triggered(LAYER_DOWN)) {
 			shiftLayer(mc, -1);
 		}
 
-		while (UNDO.consumeClick()) {
+		if (triggered(UNDO)) {
 			String what = PlanHistory.undo(PlanManager.plan());
 			PlanManager.actionBar(Component.literal(what == null
 					? Lang.t("map.nothing_to_undo")
 					: Lang.t("map.undone", what)));
 		}
 
-		while (SCAN.consumeClick()) {
-			if (!PlanManager.hasPlan()) {
-				continue;
-			}
-
+		if (triggered(SCAN) && PlanManager.hasPlan()) {
 			int[] result = ScanCache.scanAll(mc);
 			PlanManager.actionBar(Component.literal(
 					Lang.t("materials.scanned", result[0], result[1], result[2])));

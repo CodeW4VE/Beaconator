@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -762,14 +763,8 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		String name = Component.translatable(mapping.getName()).getString();
-		String tail = ": " + mapping.getTranslatedKeyMessage().getString();
-		int room = buttonWidth - 8 - font.width(tail);
-
-		if (font.width(name) > room) {
-			name = font.plainSubstrByWidth(name, Math.max(0, room - font.width("..."))) + "...";
-		}
-
-		return Component.literal(name + tail);
+		String tail = ": " + Keys.describe(mapping);
+		return Component.literal(fit(name, buttonWidth - 8 - font.width(tail)) + tail);
 	}
 
 	@Override
@@ -813,10 +808,16 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		if (listeningFor != null) {
+			// Shift, control and alt are the modifiers of the combination, never the key itself.
+			// Without this, reaching for Ctrl + Shift + G binds the control key and stops there.
+			if (isModifierKey(keyCode)) {
+				return true;
+			}
+
 			InputConstants.Key key = keyCode == InputConstants.KEY_ESCAPE
 					? InputConstants.UNKNOWN
 					: InputConstants.getKey(keyCode, scanCode);
-			bind(listeningFor, key);
+			bind(listeningFor, key, keyCode == InputConstants.KEY_ESCAPE ? 0 : Keys.heldModifiers());
 			listeningFor = null;
 			rebuildWidgets();
 			return true;
@@ -825,10 +826,16 @@ public class BeaconatorScreen extends Screen {
 		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 
-	private void bind(KeyMapping mapping, InputConstants.Key key) {
+	/** GLFW 340..347: the left and right shift, control, alt and super keys. */
+	private static boolean isModifierKey(int keyCode) {
+		return keyCode >= 340 && keyCode <= 347;
+	}
+
+	private void bind(KeyMapping mapping, InputConstants.Key key, int modifiers) {
 		Minecraft minecraft = Minecraft.getInstance();
 		minecraft.options.setKey(mapping, key);
 		minecraft.options.save();
+		Keys.setModifiers(mapping, modifiers);
 		KeyMapping.resetMapping();
 
 		if (key.equals(InputConstants.UNKNOWN)) {
@@ -837,16 +844,20 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		// Worth saying out loud: a modded profile has a hundred bindings and a silent clash just
-		// means two things fire at once and you never find out why.
+		// means two things fire at once and you never find out why. Our own bindings only clash
+		// when the modifiers match too, which is the whole point of having them.
 		for (KeyMapping other : minecraft.options.keyMappings) {
-			if (other != mapping && other.same(mapping)) {
-				setStatus(Lang.t("keys.conflict", key.getDisplayName().getString(),
+			boolean sameCombination = other != mapping && other.same(mapping)
+					&& (!Keys.all().contains(other) || Keys.modifiersOf(other) == modifiers);
+
+			if (sameCombination) {
+				setStatus(Lang.t("keys.conflict", Keys.describe(mapping),
 						Component.translatable(other.getName()).getString()), WARN_COLOR);
 				return;
 			}
 		}
 
-		setStatus(Lang.t("keys.bound", key.getDisplayName().getString()), OK_COLOR);
+		setStatus(Lang.t("keys.bound", Keys.describe(mapping)), OK_COLOR);
 	}
 
 	// ----------------------------------------------------------------- display
@@ -858,55 +869,44 @@ public class BeaconatorScreen extends Screen {
 		int y = 32;
 		int step = 22;
 
-		addRenderableWidget(CycleButton.<Lang.Mode>builder(value -> Component.literal(switch (value) {
+		// displayOnlyValue, or the widget prefixes the value with an empty message and a stray
+		// ": " shows up at the front of the button.
+		addRenderableWidget(CycleButton.<Lang.Mode>builder(value -> Component.literal(fit(switch (value) {
 					case AUTO -> Lang.t("display.language") + ": auto";
 					case ENGLISH -> Lang.t("display.language") + ": English";
 					case SPANISH -> Lang.t("display.language") + ": Espanol";
-				}))
+				}, 142)))
 				.withValues(Lang.Mode.values())
 				.withInitialValue(config.language)
+				.displayOnlyValue()
 				.create(left, y, 150, 20, Component.empty(), (button, value) -> {
 					config.language = value;
 					config.save();
 					rebuildWidgets();
 				}));
 
-		addRenderableWidget(CycleButton.onOffBuilder(config.showHud)
-				.create(right, y, 150, 20, Lang.c("display.hud"), (button, value) -> {
-					config.showHud = value;
-					config.save();
-				}));
-
-		addRenderableWidget(CycleButton.onOffBuilder(config.renderCoverage)
-				.create(left, y + step, 150, 20, Lang.c("display.coverage"), (button, value) -> {
-					config.renderCoverage = value;
-					config.save();
-				}));
-
-		addRenderableWidget(CycleButton.onOffBuilder(config.renderWireframe)
-				.create(right, y + step, 150, 20, Lang.c("display.outlines"), (button, value) -> {
-					config.renderWireframe = value;
-					config.save();
-				}));
+		onOff(right, y, "display.hud", config.showHud, value -> config.showHud = value);
+		onOff(left, y + step, "display.coverage", config.renderCoverage,
+				value -> config.renderCoverage = value);
+		onOff(right, y + step, "display.outlines", config.renderWireframe,
+				value -> config.renderWireframe = value);
 
 		addRenderableWidget(CycleButton.<CoverageStyle>builder(
-						value -> Component.literal(switch (value) {
+						value -> Component.literal(fit(switch (value) {
 							case SLAB -> Lang.t("display.style_slab");
 							case FLOOR -> Lang.t("display.style_floor");
 							case FULL -> Lang.t("display.style_full");
-						}))
+						}, 142)))
 				.withValues(CoverageStyle.values())
 				.withInitialValue(config.coverageStyle)
+				.displayOnlyValue()
 				.create(left, y + step * 2, 150, 20, Component.empty(), (button, value) -> {
 					config.coverageStyle = value;
 					config.save();
 				}));
 
-		addRenderableWidget(CycleButton.onOffBuilder(config.seeThrough)
-				.create(right, y + step * 2, 150, 20, Lang.c("display.see_through"), (button, value) -> {
-					config.seeThrough = value;
-					config.save();
-				}));
+		onOff(right, y + step * 2, "display.see_through", config.seeThrough,
+				value -> config.seeThrough = value);
 
 		stepper(left, y + step * 3, Lang.t("display.opacity"), () -> Math.round(config.coverageOpacity * 100),
 				value -> {
@@ -919,50 +919,23 @@ public class BeaconatorScreen extends Screen {
 			config.save();
 		}, 64, 8192, 128);
 
-		addRenderableWidget(CycleButton.onOffBuilder(config.renderBeaconMarkers)
-				.create(left, y + step * 4 + 4, 150, 20, Lang.c("display.beacon_boxes"), (button, value) -> {
-					config.renderBeaconMarkers = value;
-					config.save();
-				}));
+		onOff(left, y + step * 4 + 4, "display.beacon_boxes", config.renderBeaconMarkers,
+				value -> config.renderBeaconMarkers = value);
+		onOff(right, y + step * 4 + 4, "display.pyramid_outline", config.renderPyramidFootprint,
+				value -> config.renderPyramidFootprint = value);
+		onOff(left, y + step * 5 + 4, "display.progress", config.showProgressColor,
+				value -> config.showProgressColor = value);
+		onOff(right, y + step * 5 + 4, "display.easy_place", config.easyPlace,
+				value -> config.easyPlace = value);
+		onOff(left, y + step * 6 + 8, "display.strict", config.strictPlacement,
+				value -> config.strictPlacement = value);
 
-		addRenderableWidget(CycleButton.onOffBuilder(config.renderPyramidFootprint)
-				.create(right, y + step * 4 + 4, 150, 20, Lang.c("display.pyramid_outline"), (button, value) -> {
-					config.renderPyramidFootprint = value;
-					config.save();
-				}));
-
-		addRenderableWidget(CycleButton.onOffBuilder(config.showProgressColor)
-				.create(left, y + step * 5 + 4, 150, 20, Lang.c("display.progress"), (button, value) -> {
-					config.showProgressColor = value;
-					config.save();
-				}));
-
-		addRenderableWidget(CycleButton.onOffBuilder(config.easyPlace)
-				.create(right, y + step * 5 + 4, 150, 20, Lang.c("display.easy_place"), (button, value) -> {
-					config.easyPlace = value;
-					config.save();
-				}));
-
-		addRenderableWidget(CycleButton.onOffBuilder(config.strictPlacement)
-				.create(left, y + step * 6 + 8, 150, 20, Lang.c("display.strict"), (button, value) -> {
-					config.strictPlacement = value;
-					config.save();
-				}));
-
-		CycleButton<Boolean> follow = CycleButton.onOffBuilder(config.followLitematicaEasyPlace)
-				.create(right, y + step * 6 + 8, 150, 20, Lang.c("display.follow_litematica"),
-						(button, value) -> {
-							config.followLitematicaEasyPlace = value;
-							config.save();
-						});
+		CycleButton<Boolean> follow = onOff(right, y + step * 6 + 8, "display.follow_litematica",
+				config.followLitematicaEasyPlace, value -> config.followLitematicaEasyPlace = value);
 		follow.active = LitematicaBridge.installed();
-		addRenderableWidget(follow);
 
-		addRenderableWidget(CycleButton.onOffBuilder(config.showBeams)
-				.create(left, y + step * 7 + 8, 150, 20, Lang.c("display.beams"), (button, value) -> {
-					config.showBeams = value;
-					config.save();
-				}));
+		onOff(left, y + step * 7 + 8, "display.beams", config.showBeams,
+				value -> config.showBeams = value);
 
 		// In pixels, not blocks: a beam is only useful if it stays visible from across the site.
 		stepper(right, y + step * 7 + 8, Lang.t("display.beam_pixels"),
@@ -1164,6 +1137,34 @@ public class BeaconatorScreen extends Screen {
 		stepper(x, y, label, get, set, min, max, 1);
 	}
 
+	/**
+	 * Trims text to a pixel width, with an ellipsis when it does not fit.
+	 *
+	 * <p>Every label here goes through this. Minecraft centres button text and lets it spill out
+	 * of both ends, so a Spanish string that is a third longer than the English one turns into an
+	 * unreadable stub rather than something obviously too long.
+	 */
+	private String fit(String text, int room) {
+		if (font.width(text) <= room) {
+			return text;
+		}
+
+		return font.plainSubstrByWidth(text, Math.max(0, room - font.width("..."))) + "...";
+	}
+
+	/** An on/off toggle that leaves room for the ": ON" the widget appends. */
+	private CycleButton<Boolean> onOff(int x, int y, String key, boolean value, Consumer<Boolean> set) {
+		String label = fit(Lang.t(key), 142 - font.width(": OFF"));
+		CycleButton<Boolean> button = CycleButton.onOffBuilder(value)
+				.create(x, y, 150, 20, Component.literal(label), (widget, picked) -> {
+					set.accept(picked);
+					BeaconatorConfig.get().save();
+				});
+
+		addRenderableWidget(button);
+		return button;
+	}
+
 	/** A minus button, a live value in the middle, and a plus button. */
 	private void stepper(int x, int y, String label, IntSupplier get, IntConsumer set,
 			int min, int max, int step) {
@@ -1177,7 +1178,11 @@ public class BeaconatorScreen extends Screen {
 			rebuildWidgets();
 		}).bounds(x + 130, y, 20, 20).build());
 
-		label(x + 75, y + 6, () -> label + ": " + get.getAsInt(), () -> LABEL_COLOR, true);
+		// Only the 110 px between the two buttons are free, so the label yields, not the value.
+		label(x + 75, y + 6, () -> {
+			String value = ": " + get.getAsInt();
+			return fit(label, 106 - font.width(value)) + value;
+		}, () -> LABEL_COLOR, true);
 	}
 
 	private void label(int x, int y, Supplier<String> text, Supplier<Integer> color, boolean centered) {

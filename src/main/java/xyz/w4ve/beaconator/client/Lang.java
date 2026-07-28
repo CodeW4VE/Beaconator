@@ -163,25 +163,25 @@ public final class Lang {
 		// display
 		put("display.coverage", "Coverage", "Cobertura");
 		put("display.outlines", "Outlines", "Contornos");
-		put("display.style_slab", "Slab at beacon height", "Losa a la altura del beacon");
+		put("display.style_slab", "Slab at beacon height", "Losa en el beacon");
 		put("display.style_floor", "Slab at the bottom", "Losa en el fondo");
 		put("display.style_full", "Full volume", "Volumen entero");
-		put("display.see_through", "See through terrain", "Ver a través del terreno");
-		put("display.opacity", "Opacity %%", "Opacidad %%");
-		put("display.distance", "Draw distance", "Distancia de dibujo");
-		put("display.beacon_boxes", "Beacon boxes", "Cajas de los beacons");
+		put("display.see_through", "See through terrain", "Ver a través");
+		put("display.opacity", "Opacity %", "Opacidad %");
+		put("display.distance", "Distance", "Distancia");
+		put("display.beacon_boxes", "Beacon boxes", "Cajas de beacons");
 		put("display.beams", "Beams", "Haces de luz");
 		put("display.beam_pixels", "Beam thickness", "Grosor del haz");
-		put("display.pyramid_outline", "Pyramid outline", "Contorno de la pirámide");
+		put("display.pyramid_outline", "Pyramid outline", "Contorno pirámide");
 		put("display.hud", "HUD", "HUD");
-		put("display.progress", "Shade by progress", "Colorear según progreso");
+		put("display.progress", "Shade by progress", "Color por progreso");
 		put("display.easy_place", "Easy place", "Easy place");
-		put("display.strict", "Block stray placement", "Bloquear colocación fuera del plan");
+		put("display.strict", "Block stray blocks", "Nada fuera del plan");
 		put("display.layers", "Layers: %s", "Capas: %s");
 		put("display.layer_up", "Layer up", "Capa arriba");
 		put("display.layer_down", "Layer down", "Capa abajo");
 		put("display.language", "Language", "Idioma");
-		put("display.follow_litematica", "Follow Litematica easy place", "Seguir el easy place de Litematica");
+		put("display.follow_litematica", "Follow Litematica", "Seguir Litematica");
 
 		// layers
 		put("layers.all", "all layers", "todas las capas");

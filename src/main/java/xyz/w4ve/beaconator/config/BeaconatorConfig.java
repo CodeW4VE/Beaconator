@@ -106,6 +106,14 @@ public class BeaconatorConfig {
 	/** Shade pending nodes towards green as their blocks go in. */
 	public boolean showProgressColor = true;
 
+	// -- keys -----------------------------------------------------------------
+	/**
+	 * Extra modifiers per binding, keyed by its translation key: 1 shift, 2 control, 4 alt.
+	 * Vanilla key bindings are a single key, so this is what makes `Shift + G` and
+	 * `Ctrl + Shift + G` different bindings.
+	 */
+	public Map<String, Integer> keyModifiers = new LinkedHashMap<>();
+
 	// -- session --------------------------------------------------------------
 	/**
 	 * Last plan opened on each server or world, so rejoining picks up where you left off instead
@@ -156,6 +164,10 @@ public class BeaconatorConfig {
 	private void migrate() {
 		if (lastPlan == null) {
 			lastPlan = new LinkedHashMap<>();
+		}
+
+		if (keyModifiers == null) {
+			keyModifiers = new LinkedHashMap<>();
 		}
 
 		if (colorExcluded == 0xFF303030) {
