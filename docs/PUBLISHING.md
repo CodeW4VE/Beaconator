@@ -18,11 +18,22 @@ The jar lands in `build/libs/beaconator-<mod version>+<mc version>.jar`.
 
 ## Modrinth
 
-The project has to be created once by hand at <https://modrinth.com/dashboard/projects>, because
-the API cannot create a project from nothing without an approved account and it needs a human to
-accept the rules. After that, releases are automated.
+**The project already exists as a draft**: id `1LmFuBOw`, slug `beaconator`, icon and body
+uploaded, MIT, categories utility and management. A draft is visible to nobody but the owner
+until it is submitted for review, and it cannot be submitted until it has at least one version.
 
-### One time: create the project
+So the remaining steps are:
+
+1. Push a `v*` tag. The release workflow builds the jar, makes the GitHub Release and uploads the
+   version to Modrinth (`MODRINTH_ID` variable and `MODRINTH_TOKEN` secret are already set on the
+   repo).
+2. On the Modrinth page, hit **Submit for review**. Only a human can do that.
+
+The client/server side shows as "unknown" until the first version lands, because Modrinth now
+derives it from the versions themselves. `fabric.mod.json` declares `"environment": "client"`, so
+it sorts itself out on upload.
+
+### For reference: what the project was created with
 
 | Field | Value |
 | --- | --- |
