@@ -43,3 +43,7 @@ replay_*.log
 
 PRIVATE.md
 backups-planes/
+
+# python
+
+__pycache__/
