@@ -53,7 +53,12 @@ jobs:
         with:
           modrinth-id: ${{ vars.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          files: build/libs/beaconator-*+*.jar
+          # Not the sources jar. It matches the same pattern and, being first
+          # alphabetically, got uploaded as the primary download: everyone
+          # pressing Download would have got a jar that is not a mod.
+          files: |
+            build/libs/beaconator-*+*.jar
+            !build/libs/*-sources.jar
           name: ${{ github.ref_name }}
           version-type: release
           changelog-file: CHANGELOG.md
