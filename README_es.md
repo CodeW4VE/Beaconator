@@ -4,11 +4,14 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Minecraft](https://img.shields.io/badge/minecraft-1.21-green.svg)](https://fabricmc.net/)
 
-Mod cliente de Fabric para planificar y construir **perímetros de beacons**.
+Mod de Fabric para planificar y construir **perímetros de beacons**. Funciona solo en el cliente;
+poné el mismo jar en el servidor y todo el equipo comparte un plan.
 
 Pones un beacon central, subís la rueda para agrandar la retícula, y Beaconator calcula dónde
 va cada beacon, dibuja exactamente cuánto cubre cada uno y lleva la cuenta de los que ya
 construiste.
+
+![Un perímetro desde el aire, con un haz sobre cada beacon](docs/img/01-beams.jpg)
 
 [English](README.md)
 
@@ -27,100 +30,122 @@ Beaconator solo hace perímetros, así que puede hacerlos bien.
 - **Un mapa sobre el que planificar.** El mod dibuja su propio mapa con los chunks que tenés cargados y le pone la retícula encima: ahí decidís con clicks cuáles nodos entran, cuáles quedan fuera y cuáles se eliminan. Así es como se planifica un perímetro de verdad, mirando la forma desde arriba y no forzando la vista contra cajas a cien bloques de distancia.
 - **Retícula desde un punto.** Ponés el centro y la rueda recorre anillos concéntricos: 1 nodo, 9, 25, 49. Los lados se pueden estirar por separado cuando el perímetro no es cuadrado.
 - **Cobertura real.** Cada nodo se dibuja con el volumen en el que vanilla aplica los efectos: `2r + 1` de lado, `r` hacia abajo y sin límite hacia arriba. No es un cubo.
-- **De 1 a 5 beacons por nodo** sobre una sola pirámide compartida, para tener todos los efectos primarios a la vez. Los tamaños de capa y el conteo de bloques salen solos.
+- **De 1 a 6 beacons por nodo** sobre una sola pirámide compartida, para tener todos los efectos primarios a la vez. El mod elige la **forma más barata**: cuatro beacons en cuadrado gastan 216 bloques por nodo en vez de los 236 de ponerlos en fila.
+- **Un plan compartido por el servidor.** Poné el mismo jar en un servidor Fabric y el plan es de todos: te llega al entrar, y cada nodo que alguien coloca, excluye o elimina aparece en vivo para el resto.
 - **Estados de nodo.** Click izquierdo lo saca del plan, click derecho lo marca como fuera del perímetro, lo que le pone un cristal negro encima para que se distinga de lejos.
-- **Escaneo en vivo.** Los nodos se ponen verdes solos según los construís, y las pirámides a medias van tirando a verde conforme entran los bloques.
+- **Escaneo en vivo.** Los nodos se ponen verdes solos según los construís. Los que están a medias quedan **amarillos**, incluida la pirámide terminada a la que le falta un beacon: esa parece lista desde lejos y te enterás cuando ya spawnean mobs.
 - **Lista de materiales** de lo que pide el plan y lo que falta.
 - **Colocación asistida** que elige el bloque correcto de tu hotbar y no te deja poner bloques del plan donde el plan no pide nada.
 - **Filtro de capas** para trabajar una hilera a la vez.
 - **Importar y exportar litematics**, para retomar un perímetro que ya construiste y pasarle el esquema a quien no use este mod. Si tenés Litematica instalado, el easy place sigue su toggle en vez de pelearse con él.
 - **Inglés y español**, cambiado desde la pantalla del mod y no desde el idioma del juego.
-- **Todas las teclas se pueden cambiar** desde la pestaña Keys, y la pantalla también se abre desde Mod Menu.
+- **Todas las teclas se pueden cambiar**, con modificadores: `G`, `Shift + G` y `Ctrl + Shift + G` son tres teclas distintas.
 
 ## Requisitos
 
-- Minecraft 1.21
+- Minecraft **1.21** a **1.21.4**
 - Fabric Loader 0.16 o superior
-- Fabric API
+- [Fabric API](https://modrinth.com/mod/fabric-api)
 
-Solo cliente. No manda nada al servidor ni hace falta instalar nada allá.
+Tirá el jar en `mods/` y listo. Opcional: poné **el mismo jar** en el servidor Fabric para los
+planes compartidos. Si no lo hacés, no cambia nada.
 
-## Para empezar
+## ¿Nunca lo usaste? Empezá acá
 
-Con **shift + B** se abre la pantalla del mod, o le asignás la tecla que quieras. Ahí está
-todo: el mapa, los ajustes de retícula, los bloques, la lista de materiales y la pantalla.
+Beaconator sirve para una cosa: cubrir un área grande de beacons, pareja, sin huecos, y saber
+cuánto te falta. Si estás spawn proofeando un perímetro, este es el mod.
 
-- **New plan here**, en la pestaña Plan, empieza un plan centrado donde estás parado.
-- **Detect from world** lee un perímetro que ya está construido, directo de los chunks
-  cargados y con coordenadas reales. Es la forma de retomar uno existente.
+**1. Abrí la pantalla.** **Shift + B**. Eso es toda la interfaz: pestañas arriba, Listo abajo.
+`B` solo enciende y apaga el modo edición.
 
-En la pestaña **Map**: arrastrás para mover, rueda para zoom, click izquierdo elimina un nodo y
-click derecho lo marca como fuera del perímetro. El terreno se va rellenando conforme volás por
-encima y se conserva entre sesiones.
+**2. Hacé un plan.** Parate más o menos en el medio del área y en la pestaña **Plan** dale a
+**Plan nuevo aquí**. Si el perímetro ya está a medias, dale a **Detectar del mundo** y el mod lee
+los beacons que ya están puestos, con sus coordenadas reales.
 
-Marcar doscientos nodos de uno en uno no le gusta a nadie, así que arrastrando se hace en bloque:
+**3. Dale forma en el mapa.** La pestaña **Mapa** es el mapa del propio mod, dibujado a un píxel
+por bloque con los chunks que fuiste cargando, y con tu retícula encima.
+
+![La pestaña del mapa con toda la retícula](docs/img/02-map.jpg)
+
+Para moverte por él:
 
 | Control | Qué hace |
 |---------|----------|
-| Shift + arrastrar con el izquierdo | Elimina del plan todo lo que quede en el rectángulo |
-| Shift + arrastrar con el derecho | Marca como fuera del perímetro todo lo del rectángulo |
-| Ctrl + arrastrar | Devuelve a pendiente todo lo del rectángulo |
-| Ctrl + Z, o el botón Deshacer | Devuelve el último cambio, sea un nodo o un rectángulo entero |
+| Arrastrar | Mueve el mapa |
+| Rueda | Zoom |
+| Botón **Encajar** | Aleja hasta que entre el plan entero |
+| Botón **Centrar en mí** | Salta a donde estás parado |
+| Click izquierdo en un nodo | Lo elimina del plan (no se construye) |
+| Click derecho en un nodo | Lo marca excluido (se construye, pero no es del perímetro) |
+| Shift + arrastrar, izquierdo | Elimina todo el rectángulo |
+| Shift + arrastrar, derecho | Excluye todo el rectángulo |
+| Ctrl + arrastrar | Devuelve el rectángulo a pendiente |
+| Ctrl + Z, o **Deshacer** | Deshace lo último, un nodo o un rectángulo entero |
+| Flechas | Corren la retícula un bloque (shift 5, ctrl 16) |
+| Av pág / Re pág | Mueven la retícula en Y |
 
-En el mundo, con el modo edición encendido (`B`):
+Cerrar la pantalla no pierde nada: el plan se guarda solo, y se reabre la próxima vez que entrás
+a ese servidor.
+
+**4. Configuralo.** En la pestaña **Retícula**: beacons por nodo, nivel de la pirámide, separación
+y hasta dónde llega. Dejá **La separación sigue al nivel** encendido y la cobertura encaja exacta,
+sin solapes ni huecos. El renglón de abajo te dice si encaja.
+
+**5. Construilo.** Ahora sí, a picar. En el mundo tenés:
+
+- Un **haz sobre cada posición de beacon** que sube al cielo como uno de verdad. **Rojo** es que
+  no está construido, **amarillo** que está empezado pero sin terminar (incluida la pirámide
+  entera a la que le falta un beacon), **verde** que está listo, gris que está excluido. Con **G**
+  los apagás cuando estorban.
+
+  ![Haces rojos sobre lo que falta, verdes sobre lo hecho](docs/img/04-beams-close.jpg)
+
+- La **cobertura** real de cada beacon, así los huecos se ven en vez de ser teóricos.
+- Una **lista de materiales** de lo que falta, en el HUD y en su pestaña.
+- Los nodos se ponen verdes **solos** a medida que los construís. Vos no le decís nada al mod.
+
+**6. En equipo.** Si el servidor tiene el mod, aparece una pestaña **Servidor**. Dale a
+**Compartir el mío** para subir tu plan; los demás lo abren de la lista. A partir de ahí, cada
+nodo que alguien termina lo ven todos, en vivo. El HUD pone `[compartido]` cuando lo que marcás
+sale para afuera.
+
+## Teclas
+
+Todas se pueden cambiar, desde los controles del juego o desde la pestaña **Teclas** del mod. Las
+teclas admiten modificadores, así que `G`, `Shift + G` y `Ctrl + Shift + G` son tres cosas
+distintas.
+
+| Tecla | Por defecto |
+|-------|-------------|
+| Modo edición | `B` |
+| Abrir la pantalla | `Shift + B` |
+| Haces sí o no | `G` |
+| Poner el centro donde estás | sin asignar |
+| Render sí o no | sin asignar |
+| Easy place sí o no | sin asignar |
+| Capa arriba · Capa abajo | sin asignar |
+| Escanear el mundo | sin asignar |
+| Deshacer | sin asignar |
+
+Con el modo edición encendido, en el mundo:
 
 | Control | Qué hace |
 |---------|----------|
 | Rueda | Agranda o achica la retícula |
-| Shift + rueda | Beacons por nodo, de 1 a 5 |
+| Shift + rueda | Beacons por nodo, de 1 a 6 |
 | Ctrl + rueda | Ajusta la separación |
 | Click izquierdo en un nodo | Lo saca del plan, o lo devuelve |
-| Click derecho en un nodo | Lo marca como fuera del perímetro, o lo devuelve |
-
-## Teclas
-
-Todas se pueden cambiar, desde los controles del juego o desde la pestaña **Keys** del propio
-mod. Solo la primera viene con tecla puesta.
-
-| Tecla | Por defecto |
-|-------|-------------|
-| Modo edición, con shift abre la pantalla | `B` |
-| Abrir la pantalla | sin asignar |
-| Poner el centro donde estás | sin asignar |
-| Encender o apagar el render | sin asignar |
-| Encender o apagar easy place | sin asignar |
-| Capa arriba · Capa abajo | sin asignar |
-| Escanear el mundo | sin asignar |
+| Click derecho en un nodo | Lo marca excluido, o lo devuelve |
 
 ## Comandos
 
-Todo cuelga de `/bea` (o `/beaconator`). Los mensajes de los comandos están en inglés; la
-pantalla y el HUD sí hablan español.
+Tres, porque todo lo demás es un botón que además te muestra el valor actual, que es justo lo
+que un comando no puede hacer.
 
 | Comando | Qué hace |
 |---------|----------|
-| `/bea gui` | Abre la pantalla |
-| `/bea new <nombre>` | Empieza un plan centrado donde estás |
-| `/bea detect [nombre] [radio]` | Arma el plan leyendo los beacons ya construidos |
-| `/bea open <nombre>` · `list` · `save` · `delete <nombre>` · `close` | Planes guardados |
-| `/bea info` | Todo sobre el plan actual, materiales incluidos |
-| `/bea ring <n>` | Deja la retícula en un cuadrado concéntrico |
-| `/bea side <north\|south\|east\|west> <n>` | Estira o encoge un lado |
-| `/bea beacons <1-5>` | Beacons por nodo |
-| `/bea level <1-4>` | Nivel de pirámide, que fija el alcance |
-| `/bea spacing <n>` · `spacing auto` | Separación entre nodos |
-| `/bea axis <x\|z>` | Hacia dónde crecen las filas de beacons |
-| `/bea block pyramid <id>` · `block marker <id>` | Bloques con los que se construye |
-| `/bea marker <on\|off>` | Si los nodos excluidos llevan bloque marcador de verdad |
-| `/bea scan` | Compara el plan entero contra el mundo |
-| `/bea materials [node]` | Lo que hace falta y lo que falta por poner |
-| `/bea state <pending\|excluded\|removed>` | Cambia el nodo al que apuntás |
-| `/bea fill <estado> <desdeI> <desdeJ> <hastaI> <hastaJ>` | Cambia un rectángulo de nodos |
-| `/bea layer <all\|here\|y [hastaY]>` | Filtro de capas |
-| `/bea easyplace <on\|off>` | Colocación asistida |
-| `/bea import <archivo>` · `export [archivo]` | Litematics, desde `schematics/` |
-| `/bea move <dx> <dy> <dz>` · `center [x y z]` | Mover el plan |
-| `/bea render <on\|off>` · `style <slab\|floor\|full>` · `hud <on\|off>` | Pantalla |
+| `/bea` o `/bea gui` | Abre la pantalla |
+| `/bea share` | Sube el plan abierto al servidor |
 
 ## La matemática, por si te interesa
 

@@ -11,6 +11,8 @@ Drop one beacon in the middle, scroll to grow the grid, and Beaconator works out
 other beacon goes, draws exactly how much ground each one covers, and keeps track of which ones
 you have already built.
 
+![A perimeter from the air, with a beam over every beacon](docs/img/01-beams.jpg)
+
 [Español](README_es.md)
 
 ## Why
@@ -66,7 +68,11 @@ Done at the bottom. `B` on its own turns edit mode on and off.
 and the mod reads the beacons that are already there, with their real coordinates.
 
 **3. Shape it on the map.** The **Map** tab is the mod's own map, drawn one pixel per block from
-the chunks you have loaded, with your grid on top of it. Getting around it:
+the chunks you have loaded, with your grid on top of it.
+
+![The map tab with the whole grid on it](docs/img/02-map.jpg)
+
+Getting around it:
 
 | Input | What it does |
 |-------|--------------|
@@ -96,6 +102,9 @@ exactly, with no overlap and no holes. The line under the buttons tells you if i
   is not built, **yellow** means it is started but not finished (including a pyramid that is up
   but missing a beacon), **green** means done, grey means excluded. Press **G** to turn the beams
   off when they are in the way.
+
+  ![Red beams over what is left to build, green over what is done](docs/img/04-beams-close.jpg)
+
 - The **coverage** each beacon actually gives, so holes are visible instead of theoretical.
 - A **material list** of what is left, in the HUD and on the Materials tab.
 - Nodes turn green **on their own** as you build them. You do not tell the mod anything.
