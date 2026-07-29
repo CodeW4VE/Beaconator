@@ -149,8 +149,9 @@ public final class Keys {
 		BeaconatorConfig.get().save();
 
 		for (Map.Entry<KeyMapping, Integer> entry : DEFAULTS.entrySet()) {
-			minecraft.options.setKey(entry.getKey(),
-					InputConstants.Type.KEYSYM.getOrCreate(entry.getValue()));
+			// KeyMapping.setKey rather than Options.setKey: the latter is gone from 1.21.2 on,
+			// this one is in every version.
+			entry.getKey().setKey(InputConstants.Type.KEYSYM.getOrCreate(entry.getValue()));
 		}
 
 		minecraft.options.save();
@@ -179,7 +180,7 @@ public final class Keys {
 			return;
 		}
 
-		mc.options.setKey(OPEN_SCREEN, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+		OPEN_SCREEN.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
 		mc.options.save();
 		KeyMapping.resetMapping();
 	}

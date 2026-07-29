@@ -927,7 +927,7 @@ public class BeaconatorScreen extends Screen {
 
 	private void bind(KeyMapping mapping, InputConstants.Key key, int modifiers) {
 		Minecraft minecraft = Minecraft.getInstance();
-		minecraft.options.setKey(mapping, key);
+		mapping.setKey(key);
 		minecraft.options.save();
 		Keys.setModifiers(mapping, modifiers);
 		KeyMapping.resetMapping();

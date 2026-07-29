@@ -276,6 +276,14 @@ public final class MapTile {
 	}
 
 	/** NativeImage stores ABGR; map colours arrive as RGB. */
+	/**
+	 * Swaps the red and blue bytes. NativeImage took ABGR up to 1.21.1 and takes ARGB from 1.21.2,
+	 * so the multiversion build routes the pixels through here for the newer ones.
+	 */
+	static int argbFromAbgr(int abgr) {
+		return (abgr & 0xFF00FF00) | (abgr & 0xFF) << 16 | (abgr >> 16 & 0xFF);
+	}
+
 	private static int abgr(int rgb, int modifier) {
 		int red = (rgb >> 16 & 0xFF) * modifier / 255;
 		int green = (rgb >> 8 & 0xFF) * modifier / 255;

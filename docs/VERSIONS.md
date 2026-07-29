@@ -3,14 +3,37 @@
 Beaconator targets **1.21**. This is what it actually costs to go further, measured rather than
 guessed: the mod was compiled unchanged against each version and the compiler errors counted.
 
-| Minecraft | Compile errors | What it means |
+| Minecraft | Compile errors | Status |
 | --- | --- | --- |
 | 1.21 | 0 | the target |
-| 1.21.1 | **0** | free, same jar works |
-| 1.21.4 | 18 | an afternoon |
+| 1.21.1 | **0** | same jar |
+| 1.21.2 | 9 | **shipped**, six substitutions |
+| 1.21.3 | 9 | **shipped** |
+| 1.21.4 | 10 | **shipped**, one more substitution |
 | 1.21.5 | 88 | the render backend has to be rewritten |
 | 1.21.11 | 186 | the above plus the NBT and screen API churn |
 | 26.2 | does not even configure | needs Java 25, a newer Loom, and official Mojang mappings that Loom 1.17 cannot resolve for it |
+
+## How the shipped versions are built
+
+`tools/multiversion.py` copies the source, applies that version's substitutions and compiles.
+The compiler checks the result against the real mappings, which is the point: these builds are
+not play tested, so a method that does not exist has to fail the build rather than crash someone's
+game.
+
+What actually differs between 1.21 and 1.21.4, all of it renames:
+
+| Was | Became |
+| --- | --- |
+| `Level.getMinBuildHeight` / `getMaxBuildHeight` | `getMinY` / `getMaxY` |
+| `NativeImage.setPixelRGBA` (ABGR) | `setPixel` (ARGB, so the bytes get swapped) |
+| `BuiltInRegistries.BLOCK.get` | returns an `Optional` of a holder |
+| `GameRenderer.getPositionColorShader` | `CoreShaders.POSITION_COLOR` |
+| `GuiGraphics.blit(ResourceLocation, ...)` | takes a render type, and the uv floats moved ahead of the size |
+| `TextureManager.register(String, ...)` | takes a `ResourceLocation` and returns void (1.21.4) |
+
+`Options.setKey(mapping, key)` also went away, but `KeyMapping.setKey(key)` exists in every
+version, so the main source uses that and needs no substitution.
 
 ## Where the walls are
 
