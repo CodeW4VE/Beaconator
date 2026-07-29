@@ -354,8 +354,10 @@ public final class MapView {
 
 		// The same three way read the world render uses, excluded nodes included: they get built
 		// too, so flat grey left no way to see which ones are done.
-		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED) {
-			boolean excluded = status == NodeStatus.EXCLUDED;
+		boolean excluded = status == NodeStatus.EXCLUDED;
+
+		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED
+				&& (!excluded || config.shadeExcluded)) {
 
 			if (ScanCache.finished(key)) {
 				return excluded ? blend(config.colorExcluded, config.colorPlaced, 0.6f)

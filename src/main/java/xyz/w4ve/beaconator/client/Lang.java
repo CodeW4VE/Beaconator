@@ -195,6 +195,7 @@ public final class Lang {
 		put("display.pyramid_outline", "Pyramid outline", "Contorno pirámide");
 		put("display.hud", "HUD", "HUD");
 		put("display.progress", "Shade by progress", "Color por progreso");
+		put("display.shade_excluded", "Shade excluded too", "Color en excluidos");
 		put("display.easy_place", "Easy place", "Easy place");
 		put("display.strict", "Block stray blocks", "Nada fuera del plan");
 		put("display.layers", "Layers: %s", "Capas: %s");
@@ -206,6 +207,18 @@ public final class Lang {
 		put("colour.excluded", "Excluded", "Excluido");
 		put("colour.removed", "Dropped", "Eliminado");
 		put("colour.beam", "Beam", "Haz");
+		put("colour.white", "white", "blanco");
+		put("colour.yellow", "yellow", "amarillo");
+		put("colour.orange", "orange", "naranja");
+		put("colour.red", "red", "rojo");
+		put("colour.pink", "pink", "rosa");
+		put("colour.purple", "purple", "morado");
+		put("colour.blue", "blue", "azul");
+		put("colour.cyan", "cyan", "cian");
+		put("colour.green", "green", "verde");
+		put("colour.lime", "lime", "lima");
+		put("colour.grey", "grey", "gris");
+		put("colour.dark_grey", "dark grey", "gris oscuro");
 		put("display.language", "Language", "Idioma");
 		put("display.follow_litematica", "Follow Litematica", "Seguir Litematica");
 

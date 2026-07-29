@@ -1087,6 +1087,8 @@ public class BeaconatorScreen extends Screen {
 				value -> config.renderPyramidFootprint = value);
 		onOff(left, y + step * 5 + 4, "display.progress", config.showProgressColor,
 				value -> config.showProgressColor = value);
+		onOff(left, y + step * 7 + 8 + 22, "display.shade_excluded", config.shadeExcluded,
+				value -> config.shadeExcluded = value);
 		onOff(right, y + step * 5 + 4, "display.easy_place", config.easyPlace,
 				value -> config.easyPlace = value);
 		onOff(left, y + step * 6 + 8, "display.strict", config.strictPlacement,
@@ -1391,6 +1393,12 @@ public class BeaconatorScreen extends Screen {
 	 * Colours you can actually tell apart on a map made of greens, greys and blues. Cycled with a
 	 * button rather than typed as hex: this is the sort of thing you fix while looking at it.
 	 */
+	private static final String[] PALETTE_NAMES = {
+		"colour.white", "colour.yellow", "colour.orange", "colour.red", "colour.pink",
+		"colour.purple", "colour.blue", "colour.cyan", "colour.green", "colour.lime",
+		"colour.grey", "colour.dark_grey"
+	};
+
 	private static final int[] PALETTE = {
 		0xFFFFFFFF, 0xFFFFD23F, 0xFFFF9838, 0xFFFF3B30, 0xFFFF5BD0, 0xFFB06BFF,
 		0xFF4C8DFF, 0xFF35D6D6, 0xFF57E36B, 0xFFB6FF5B, 0xFF9AA0A8, 0xFF4A4E55
@@ -1409,11 +1417,13 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		int shown = index;
+		// The range is the palette itself, so the bar reads as where you are in it. It used to be
+		// a huge symmetric range with the index near zero, which drew every colour half full.
 		addRenderableWidget(new StepperWidget(x, y, labelWidth, 20, Lang.t(key),
 				() -> shown, value -> {
-					set.accept(PALETTE[Math.floorMod(value, PALETTE.length)]);
+					set.accept(PALETTE[Math.clamp(value, 0, PALETTE.length - 1)]);
 					BeaconatorConfig.get().save();
-				}, -PALETTE.length * 8, PALETTE.length * 8, 1, this::rebuildWidgets) {
+				}, 0, PALETTE.length - 1, 1, this::rebuildWidgets) {
 			@Override
 			protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX,
 					int mouseY, float delta) {
@@ -1422,7 +1432,7 @@ public class BeaconatorScreen extends Screen {
 				graphics.fill(getX() + width - 34, getY() + 4, getX() + width - 22, getY() + 16, 0xFF000000);
 				graphics.fill(getX() + width - 33, getY() + 5, getX() + width - 23, getY() + 15, get.getAsInt());
 			}
-		});
+		}.showing(value -> Lang.t(PALETTE_NAMES[Math.clamp(value, 0, PALETTE.length - 1)])));
 	}
 
 	private String coverageNote() {

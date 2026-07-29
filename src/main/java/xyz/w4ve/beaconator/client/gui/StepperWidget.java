@@ -1,6 +1,7 @@
 package xyz.w4ve.beaconator.client.gui;
 
 import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -29,6 +30,8 @@ public class StepperWidget extends AbstractWidget {
 	private final int step;
 	private final Runnable onChange;
 	private final String label;
+	/** How the number reads. Null means the number itself, which is right for most of them. */
+	private IntFunction<String> format;
 
 	public StepperWidget(int x, int y, int width, int height, String label, IntSupplier get,
 			IntConsumer set, int min, int max, int step, Runnable onChange) {
@@ -40,6 +43,12 @@ public class StepperWidget extends AbstractWidget {
 		this.max = max;
 		this.step = step;
 		this.onChange = onChange;
+	}
+
+	/** Shows something other than the raw number, for values that are an index into a list. */
+	public StepperWidget showing(IntFunction<String> format) {
+		this.format = format;
+		return this;
 	}
 
 	private void nudge(int direction) {
@@ -108,12 +117,13 @@ public class StepperWidget extends AbstractWidget {
 		graphics.drawString(font, "-", getX() + 9, textY, 0xFFFFFFFF, false);
 		graphics.drawString(font, "+", getX() + width - 12, textY, 0xFFFFFFFF, false);
 
-		String text = label + ": " + value;
+		String shown = format == null ? String.valueOf(value) : format.apply(value);
+		String text = label + ": " + shown;
 		int room = width - 46;
 
 		if (font.width(text) > room) {
-			text = font.plainSubstrByWidth(label, Math.max(0, room - font.width("...: " + value)))
-					+ "...: " + value;
+			text = font.plainSubstrByWidth(label, Math.max(0, room - font.width("...: " + shown)))
+					+ "...: " + shown;
 		}
 
 		graphics.drawCenteredString(font, text, getX() + width / 2, textY, 0xFFFFFFFF);

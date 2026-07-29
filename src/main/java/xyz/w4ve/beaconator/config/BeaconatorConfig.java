@@ -118,6 +118,12 @@ public class BeaconatorConfig {
 	public int autoScanDistance = 256;
 	/** Shade pending nodes towards green as their blocks go in. */
 	public boolean showProgressColor = true;
+	/**
+	 * Excluded nodes get the same untouched, half built, done reading as the rest. Off means they
+	 * stay flat grey whatever their state, which is what they did before and what you want if you
+	 * care more about seeing the shape of the perimeter than its progress.
+	 */
+	public boolean shadeExcluded = true;
 
 	// -- layers ---------------------------------------------------------------
 	/** Which layer filter is on: 0 all, 1 a single layer, 2 a range. Kept between sessions. */

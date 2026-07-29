@@ -187,7 +187,9 @@ public final class PerimeterRenderer {
 			int base = excluded ? config.colorBeamExcluded : config.colorBeamPending;
 			int color;
 
-			if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(node.key())) {
+			if (excluded && !config.shadeExcluded) {
+				color = base;
+			} else if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(node.key())) {
 				color = excluded ? blend(base, config.colorBeamPlaced, 0.6f) : config.colorBeamPlaced;
 			} else if (xyz.w4ve.beaconator.client.scan.ScanCache.partial(node.key())) {
 				color = excluded ? blend(base, config.colorBeamPartial, 0.6f) : config.colorBeamPartial;
@@ -495,8 +497,10 @@ public final class PerimeterRenderer {
 		// way read. Muted towards their own grey, so they still say "not one of ours" at a
 		// glance: leaving them flat grey meant there was no way to tell a finished one from an
 		// untouched one, which is half the perimeter on a big site.
-		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED) {
-			boolean excluded = status == NodeStatus.EXCLUDED;
+		boolean excluded = status == NodeStatus.EXCLUDED;
+
+		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED
+				&& (!excluded || config.shadeExcluded)) {
 
 			if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(key)) {
 				return excluded ? blend(config.colorExcluded, config.colorPlaced, 0.6f)
