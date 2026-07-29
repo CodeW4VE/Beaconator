@@ -5,7 +5,9 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.w4ve.beaconator.net.NodePayload;
+import xyz.w4ve.beaconator.net.PlanListPayload;
 import xyz.w4ve.beaconator.net.PlanPayload;
+import xyz.w4ve.beaconator.net.PlanRequestPayload;
 import xyz.w4ve.beaconator.server.ServerPlan;
 
 /**
@@ -22,10 +24,12 @@ public class BeaconatorMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		// Both directions for both payloads: the same node update travels client to server and
-		// then out to everyone else, and a plan is both handed out and published.
+		// Every payload, in every direction it actually travels, before anything registers a
+		// receiver for it: Fabric throws at startup if a handler names a type nobody declared.
+		PayloadTypeRegistry.playS2C().register(PlanListPayload.TYPE, PlanListPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(PlanPayload.TYPE, PlanPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(PlanPayload.TYPE, PlanPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(PlanRequestPayload.TYPE, PlanRequestPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(NodePayload.TYPE, NodePayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(NodePayload.TYPE, NodePayload.CODEC);
 
