@@ -512,8 +512,9 @@ public class BeaconatorScreen extends Screen {
 
 		addRenderableWidget(CycleButton.<Integer>builder(value -> Component.literal(
 						Lang.t(value == 1 ? "grid.beacons_one" : "grid.beacons_many", value)))
-				.withValues(1, 2, 3, 4, 5)
+				.withValues(1, 2, 3, 4, 5, 6)
 				.withInitialValue(plan.beaconsPerNode())
+				.displayOnlyValue()
 				.create(left, cyclesY, 150, 20, Component.empty(), (button, value) -> {
 					plan.setBeaconsPerNode(value);
 					touch();
@@ -523,6 +524,7 @@ public class BeaconatorScreen extends Screen {
 						Lang.t("grid.level", value, 10 * value + 10)))
 				.withValues(1, 2, 3, 4)
 				.withInitialValue(plan.level())
+				.displayOnlyValue()
 				.create(right, cyclesY, 150, 20, Component.empty(), (button, value) -> {
 					plan.setLevel(value);
 					touch();
