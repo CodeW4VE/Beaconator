@@ -1118,12 +1118,14 @@ public class BeaconatorScreen extends Screen {
 				value -> config.colorPlaced = value);
 		colourButton(right, colourY + 22, 150, "colour.excluded", () -> config.colorExcluded,
 				value -> config.colorExcluded = value);
+		colourButton(right, colourY + 66, 150, "colour.excluded_done", () -> config.colorExcludedDone,
+				value -> config.colorExcludedDone = value);
 		colourButton(left, colourY + 44, 150, "colour.removed", () -> config.colorRemoved,
 				value -> config.colorRemoved = value);
 		colourButton(right, colourY + 44, 150, "colour.beam", () -> config.colorBeamPending,
 				value -> config.colorBeamPending = value);
 
-		int layerY = colourY + 70;
+		int layerY = colourY + 92;
 		addRenderableWidget(Button.builder(
 				Component.literal(Lang.t("display.layers", LayerFilter.describe())), button -> {
 					if (LayerFilter.active()) {
@@ -1404,35 +1406,18 @@ public class BeaconatorScreen extends Screen {
 		0xFF4C8DFF, 0xFF35D6D6, 0xFF57E36B, 0xFFB6FF5B, 0xFF9AA0A8, 0xFF4A4E55
 	};
 
-	/** One colour setting: press to move through the palette, right click to go back. */
-	private void colourButton(int x, int y, int labelWidth, String key, IntSupplier get, IntConsumer set) {
-		int current = get.getAsInt();
-		int index = 0;
+	/** One colour setting. A button, not a bar: a palette has no more and no less. */
+	private void colourButton(int x, int y, int width, String key, IntSupplier get, IntConsumer set) {
+		String[] names = new String[PALETTE.length];
 
 		for (int i = 0; i < PALETTE.length; i++) {
-			if (PALETTE[i] == current) {
-				index = i;
-				break;
-			}
+			names[i] = Lang.t(PALETTE_NAMES[i]);
 		}
 
-		int shown = index;
-		// The range is the palette itself, so the bar reads as where you are in it. It used to be
-		// a huge symmetric range with the index near zero, which drew every colour half full.
-		addRenderableWidget(new StepperWidget(x, y, labelWidth, 20, Lang.t(key),
-				() -> shown, value -> {
-					set.accept(PALETTE[Math.clamp(value, 0, PALETTE.length - 1)]);
-					BeaconatorConfig.get().save();
-				}, 0, PALETTE.length - 1, 1, this::rebuildWidgets) {
-			@Override
-			protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX,
-					int mouseY, float delta) {
-				super.renderWidget(graphics, mouseX, mouseY, delta);
-				// The swatch is the point: the number means nothing, the colour is the setting.
-				graphics.fill(getX() + width - 34, getY() + 4, getX() + width - 22, getY() + 16, 0xFF000000);
-				graphics.fill(getX() + width - 33, getY() + 5, getX() + width - 23, getY() + 15, get.getAsInt());
-			}
-		}.showing(value -> Lang.t(PALETTE_NAMES[Math.clamp(value, 0, PALETTE.length - 1)])));
+		addRenderableWidget(new ColourButton(x, y, width, Lang.t(key), PALETTE, names, get, value -> {
+			set.accept(value);
+			BeaconatorConfig.get().save();
+		}, this::rebuildWidgets));
 	}
 
 	private String coverageNote() {

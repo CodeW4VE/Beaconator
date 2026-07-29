@@ -2,7 +2,6 @@ package xyz.w4ve.beaconator.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -13,7 +12,6 @@ import java.util.Comparator;
 import java.util.List;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -35,6 +33,11 @@ import xyz.w4ve.beaconator.model.PyramidLayer;
  *
  * <p>There is deliberately no highlight of the schematic blocks themselves. Painting air and
  * dirt orange is the noise this mod exists to avoid.
+ *
+ * <p>This is the 1.21.5 and newer version of the file. It builds the same vertices as the
+ * original and differs only in how they reach the screen: blending, culling and depth used to be
+ * switches flipped around the draw, and are now baked into the pipelines in {@link Pipelines}.
+ * Line width is the one piece of state that survived as a switch.
  */
 public final class PerimeterRenderer {
 	private PerimeterRenderer() {
@@ -78,24 +81,9 @@ public final class PerimeterRenderer {
 		matrices.translate(-camera.x, -camera.y, -camera.z);
 		Matrix4f matrix = matrices.last().pose();
 
-		RenderSystem.enableBlend();
-		RenderSystem.defaultBlendFunc();
-		RenderSystem.disableCull();
-		RenderSystem.depthMask(false);
-
-		if (config.seeThrough) {
-			RenderSystem.disableDepthTest();
-		}
-
-		RenderSystem.setShader(GameRenderer::getPositionColorShader);
-
 		drawFaces(plan, visible, mc, config, matrix);
 		drawLines(plan, visible, mc, config, matrix);
 
-		RenderSystem.depthMask(true);
-		RenderSystem.enableDepthTest();
-		RenderSystem.enableCull();
-		RenderSystem.disableBlend();
 		RenderSystem.lineWidth(1.0f);
 		matrices.popPose();
 	}
@@ -145,7 +133,7 @@ public final class PerimeterRenderer {
 		MeshData mesh = buffer.build();
 
 		if (mesh != null && any) {
-			BufferUploader.drawWithShader(mesh);
+			Pipelines.draw(config.seeThrough ? Pipelines.FACES_SEE_THROUGH : Pipelines.FACES, mesh);
 		} else if (mesh != null) {
 			mesh.close();
 		}
@@ -364,7 +352,7 @@ public final class PerimeterRenderer {
 		MeshData mesh = buffer.build();
 
 		if (mesh != null && any) {
-			BufferUploader.drawWithShader(mesh);
+			Pipelines.draw(config.seeThrough ? Pipelines.LINES_SEE_THROUGH : Pipelines.LINES, mesh);
 		} else if (mesh != null) {
 			mesh.close();
 		}

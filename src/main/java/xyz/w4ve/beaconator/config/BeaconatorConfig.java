@@ -77,6 +77,11 @@ public class BeaconatorConfig {
 	public int colorPartial = 0xFFFFD23F;
 	/** Dark grey rather than near black: the old value was invisible against stone. */
 	public int colorExcluded = 0xFF6C7078;
+	/**
+	 * An excluded node that is finished. Its own colour rather than a blend of the other two,
+	 * because half the nodes of a big perimeter are excluded and you want to choose how they read.
+	 */
+	public int colorExcludedDone = 0xFF35D6D6;
 	public int colorHover = 0xFFFFC24A;
 	/**
 	 * Dropped nodes, kept apart from excluded ones. They used to share a colour, which left no

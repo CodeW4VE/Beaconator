@@ -360,8 +360,7 @@ public final class MapView {
 				&& (!excluded || config.shadeExcluded)) {
 
 			if (ScanCache.finished(key)) {
-				return excluded ? blend(config.colorExcluded, config.colorPlaced, 0.6f)
-						: config.colorPlaced;
+				return excluded ? config.colorExcludedDone : config.colorPlaced;
 			}
 
 			if (ScanCache.partial(key)) {

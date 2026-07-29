@@ -205,6 +205,7 @@ public final class Lang {
 		put("colour.partial", "Half built", "A medias");
 		put("colour.placed", "Done", "Hecho");
 		put("colour.excluded", "Excluded", "Excluido");
+		put("colour.excluded_done", "Excluded, done", "Excluido, hecho");
 		put("colour.removed", "Dropped", "Eliminado");
 		put("colour.beam", "Beam", "Haz");
 		put("colour.white", "white", "blanco");
