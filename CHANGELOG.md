@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.0
+
+Ships for **1.21.2, 1.21.3 and 1.21.4** as well, built from the same source: between 1.21 and
+1.21.4 vanilla only renamed things, and `tools/multiversion.py` compiles a jar against each one.
+The compiler does the checking, which matters because those builds are not play tested.
+
+- **Excluded nodes change colour as you build them.** They get a pyramid, a beacon and a marker
+  like everything else, but they were flat grey whatever their state, so there was no telling a
+  finished one from one nobody had touched. On a site where half the nodes are excluded, that was
+  half the perimeter you could not read. A finished one has its own colour, and the whole thing
+  is a toggle if you would rather see the shape than the progress.
+- **Colours are buttons, not sliders.** A palette has no more and no less to slide towards, and
+  the bar drew half full whatever colour it was on. They wrap, they say the colour's name, and
+  they show it.
+- The stray `": "` in front of the beacons per node and pyramid level buttons is gone, and
+  beacons per node goes to six, which the geometry already handled.
+- The Display tab lays itself out from the height the screen actually has instead of a fixed 22
+  pixels a row, so it stops running off the bottom of small screens.
+
 ## 1.0.0
 
 First build.
