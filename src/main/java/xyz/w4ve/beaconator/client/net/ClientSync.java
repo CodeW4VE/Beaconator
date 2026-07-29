@@ -1,17 +1,23 @@
 package xyz.w4ve.beaconator.client.net;
 
+import java.util.ArrayList;
+import java.util.List;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.chat.Component;
+import xyz.w4ve.beaconator.client.Lang;
 import xyz.w4ve.beaconator.client.PlanManager;
+import xyz.w4ve.beaconator.client.scan.ScanCache;
 import xyz.w4ve.beaconator.io.PlanStore;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.net.NodePayload;
+import xyz.w4ve.beaconator.net.PlanListPayload;
 import xyz.w4ve.beaconator.net.PlanPayload;
+import xyz.w4ve.beaconator.net.PlanRequestPayload;
 
 /**
- * The client half of the shared plan: takes what the server sends and reports back what you do.
+ * The client half of the shared plans: what the server has, and what you do to the one you opened.
  *
  * <p>While a shared plan is open, every node you place, exclude or drop goes to the server and
  * comes back to everyone else, so the perimeter fills in live instead of each person keeping
@@ -20,12 +26,17 @@ import xyz.w4ve.beaconator.net.PlanPayload;
 public final class ClientSync {
 	/** True while applying something that came from the server, so it is not echoed straight back. */
 	private static boolean applying;
-	private static boolean shared;
+	/** The shared plan currently open, or empty when the open plan is a local file. */
+	private static String openShared = "";
+	private static List<PlanListPayload.Entry> available = new ArrayList<>();
 
 	private ClientSync() {
 	}
 
 	public static void init() {
+		ClientPlayNetworking.registerGlobalReceiver(PlanListPayload.TYPE, (payload, context) ->
+				context.client().execute(() -> available = new ArrayList<>(payload.entries())));
+
 		ClientPlayNetworking.registerGlobalReceiver(PlanPayload.TYPE, (payload, context) ->
 				context.client().execute(() -> receivePlan(payload)));
 
@@ -33,23 +44,34 @@ public final class ClientSync {
 				context.client().execute(() -> receiveNode(payload)));
 	}
 
-	/** True when the open plan is the server's copy rather than a local file. */
-	public static boolean shared() {
-		return shared;
+	/** The plans the server is holding. Empty when the server does not have the mod. */
+	public static List<PlanListPayload.Entry> available() {
+		return available;
 	}
 
-	/** The server has a plan and this client speaks the protocol. */
-	public static boolean available() {
-		return ClientPlayNetworking.canSend(PlanPayload.TYPE);
+	/** True when the open plan is one of the server's rather than a local file. */
+	public static boolean shared() {
+		return !openShared.isEmpty();
 	}
+
+	public static String openShared() {
+		return openShared;
+	}
+
+	/** The server has the mod and this client can talk to it. */
+	public static boolean connected() {
+		return ClientPlayNetworking.canSend(PlanListPayload.TYPE);
+	}
+
+	public static void forget() {
+		available = new ArrayList<>();
+		openShared = "";
+	}
+
+	// --------------------------------------------------------------- receiving
 
 	private static void receivePlan(PlanPayload payload) {
-		if (payload.isEmpty()) {
-			shared = false;
-			return;
-		}
-
-		PerimeterPlan received = PlanStore.fromJson(payload.json(), "shared");
+		PerimeterPlan received = PlanStore.fromJson(payload.json(), payload.name());
 
 		if (received == null) {
 			return;
@@ -59,8 +81,9 @@ public final class ClientSync {
 
 		try {
 			PlanManager.setPlan(received);
-			shared = true;
-			PlanManager.actionBar(Component.literal("Beaconator: shared plan from the server"));
+			openShared = payload.name();
+			ScanCache.clear();
+			PlanManager.actionBar(Component.literal(Lang.t("share.opened", payload.name())));
 		} finally {
 			applying = false;
 		}
@@ -70,7 +93,7 @@ public final class ClientSync {
 		PerimeterPlan plan = PlanManager.plan();
 		NodeStatus status = payload.state();
 
-		if (!shared || plan == null || status == null) {
+		if (!payload.plan().equals(openShared) || plan == null || status == null) {
 			return;
 		}
 
@@ -89,43 +112,59 @@ public final class ClientSync {
 		}
 	}
 
+	// ----------------------------------------------------------------- sending
+
 	/** Tells the server about a node you just changed. Does nothing off a shared plan. */
 	public static void sendNode(NodeKey key, NodeStatus status) {
-		if (!shared || applying || !ClientPlayNetworking.canSend(NodePayload.TYPE)) {
+		if (!shared() || applying || !ClientPlayNetworking.canSend(NodePayload.TYPE)) {
 			return;
 		}
 
-		ClientPlayNetworking.send(new NodePayload(key.i(), key.j(), status));
+		ClientPlayNetworking.send(new NodePayload(openShared, key.i(), key.j(), status));
 	}
 
-	/** Publishes the open plan for everyone. Operators only, enforced by the server. */
-	public static boolean publish() {
-		PerimeterPlan plan = PlanManager.plan();
-
-		if (plan == null || !ClientPlayNetworking.canSend(PlanPayload.TYPE)) {
+	/** Asks for one of the server's plans. It arrives as a {@link PlanPayload} and opens itself. */
+	public static boolean open(String name) {
+		if (!connected()) {
 			return false;
 		}
 
-		ClientPlayNetworking.send(new PlanPayload(PlanStore.toJson(plan)));
-		shared = true;
+		ClientPlayNetworking.send(new PlanRequestPayload(name));
 		return true;
 	}
 
-	/** Takes the shared plan down. Everyone keeps what they have open, nobody gets it on join. */
-	public static boolean unpublish() {
-		if (!ClientPlayNetworking.canSend(PlanPayload.TYPE)) {
+	/** Puts the open plan on the server under its own name. Anyone with the mod may do this. */
+	public static boolean share() {
+		PerimeterPlan plan = PlanManager.plan();
+
+		if (plan == null || !connected()) {
 			return false;
 		}
 
-		ClientPlayNetworking.send(PlanPayload.none());
-		shared = false;
+		ClientPlayNetworking.send(new PlanPayload(plan.name(), PlanStore.toJson(plan)));
+		openShared = plan.name();
+		return true;
+	}
+
+	/** Takes a plan off the server. Everyone keeps whatever they have open. */
+	public static boolean remove(String name) {
+		if (!connected()) {
+			return false;
+		}
+
+		ClientPlayNetworking.send(new PlanPayload(name, ""));
+
+		if (name.equals(openShared)) {
+			openShared = "";
+		}
+
 		return true;
 	}
 
 	/** A local plan opened by hand stops being the shared one. */
 	public static void detach() {
 		if (!applying) {
-			shared = false;
+			openShared = "";
 		}
 	}
 }

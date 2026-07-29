@@ -1,5 +1,7 @@
 package xyz.w4ve.beaconator.client;
 
+import xyz.w4ve.beaconator.config.BeaconatorConfig;
+
 /**
  * Restricts the plan to a slice of the world along Y, the way schematic mods do layers.
  *
@@ -46,18 +48,43 @@ public final class LayerFilter {
 
 	public static void all() {
 		mode = Mode.ALL;
+		store();
 	}
 
 	public static void single(int y) {
 		mode = Mode.SINGLE;
 		min = y;
 		max = y;
+		store();
 	}
 
 	public static void range(int from, int to) {
 		mode = Mode.RANGE;
 		min = Math.min(from, to);
 		max = Math.max(from, to);
+		store();
+	}
+
+	/**
+	 * Kept in the config rather than only in memory. Working a perimeter one course at a time
+	 * takes days, and having the filter quietly reset to "all layers" every time the game
+	 * restarts means finding out the hard way, halfway through a layer.
+	 */
+	private static void store() {
+		BeaconatorConfig config = BeaconatorConfig.get();
+		config.layerMode = mode.ordinal();
+		config.layerMin = min;
+		config.layerMax = max;
+		config.save();
+	}
+
+	/** Reads back what {@link #store()} wrote. Called once, when the mod starts. */
+	public static void load() {
+		BeaconatorConfig config = BeaconatorConfig.get();
+		Mode[] modes = Mode.values();
+		mode = config.layerMode >= 0 && config.layerMode < modes.length ? modes[config.layerMode] : Mode.ALL;
+		min = config.layerMin;
+		max = config.layerMax;
 	}
 
 	/** Moves the active layer up or down, which is how you walk a pyramid course by course. */

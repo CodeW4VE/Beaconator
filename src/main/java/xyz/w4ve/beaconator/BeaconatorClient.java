@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import org.slf4j.Logger;
 import xyz.w4ve.beaconator.client.BeaconatorHud;
 import xyz.w4ve.beaconator.client.Keys;
+import xyz.w4ve.beaconator.client.LayerFilter;
 import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.client.map.MapStore;
 import xyz.w4ve.beaconator.client.net.ClientSync;
@@ -22,6 +23,7 @@ public class BeaconatorClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		BeaconatorConfig.get();
+		LayerFilter.load();
 		Keys.init();
 		BeaconatorCommand.init();
 		ClientSync.init();

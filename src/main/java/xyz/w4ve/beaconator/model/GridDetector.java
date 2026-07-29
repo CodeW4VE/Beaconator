@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Rebuilds a plan from the beacons of an existing schematic.
@@ -43,9 +47,27 @@ public final class GridDetector {
 			}
 		}
 
-		RowAxis axis = detectAxis(positions);
-		List<int[]> origins = rowOrigins(positions, axis);
-		int beaconsPerNode = rowLength(positions, axis, origins.get(0));
+		// Beacons of one node touch each other, so a flood fill finds the nodes without having to
+		// assume anything about their shape. It used to walk rows, which read a 2x3 group as two
+		// separate three beacon nodes.
+		List<List<int[]>> groups = groups(positions);
+		int beaconsPerNode = mostCommonSize(groups);
+		RowAxis axis = detectAxis(groups);
+		List<int[]> origins = new ArrayList<>();
+
+		for (List<int[]> group : groups) {
+			int minX = Integer.MAX_VALUE;
+			int minZ = Integer.MAX_VALUE;
+
+			for (int[] cell : group) {
+				minX = Math.min(minX, cell[0]);
+				minZ = Math.min(minZ, cell[1]);
+			}
+
+			origins.add(new int[] {minX, minZ});
+		}
+
+		origins.sort((a, b) -> a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
 
 		int spacing = detectSpacing(origins);
 		int[] centre = centreOf(origins, spacing);
@@ -126,69 +148,79 @@ public final class GridDetector {
 				.orElse(beacons.get(0)[1]);
 	}
 
-	private static RowAxis detectAxis(Set<Long> positions) {
+	/** Connected groups of beacons, four way. One group is one node, whatever shape it is. */
+	private static List<List<int[]>> groups(Set<Long> positions) {
+		Set<Long> left = new HashSet<>(positions);
+		List<List<int[]>> groups = new ArrayList<>();
+
+		while (!left.isEmpty()) {
+			long seed = left.iterator().next();
+			List<int[]> group = new ArrayList<>();
+			Deque<Long> queue = new ArrayDeque<>();
+			queue.add(seed);
+			left.remove(seed);
+
+			while (!queue.isEmpty()) {
+				long packed = queue.poll();
+				int x = unpackFirst(packed);
+				int z = unpackSecond(packed);
+				group.add(new int[] {x, z});
+
+				for (long neighbour : new long[] {pack(x + 1, z), pack(x - 1, z), pack(x, z + 1), pack(x, z - 1)}) {
+					if (left.remove(neighbour)) {
+						queue.add(neighbour);
+					}
+				}
+			}
+
+			groups.add(group);
+		}
+
+		return groups;
+	}
+
+	/** The group size most nodes have, so one half built node does not set the count. */
+	private static int mostCommonSize(List<List<int[]>> groups) {
+		Map<Integer, Integer> counts = new HashMap<>();
+
+		for (List<int[]> group : groups) {
+			counts.merge(group.size(), 1, Integer::sum);
+		}
+
+		return counts.entrySet().stream()
+				.max(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey)
+				.orElse(1);
+	}
+
+	/** Which way the groups are longer. A square footprint has no axis, so Z is as good as X. */
+	private static RowAxis detectAxis(List<List<int[]>> groups) {
 		int alongX = 0;
 		int alongZ = 0;
 
-		for (long packed : positions) {
-			int x = unpackFirst(packed);
-			int z = unpackSecond(packed);
+		for (List<int[]> group : groups) {
+			int minX = Integer.MAX_VALUE;
+			int maxX = Integer.MIN_VALUE;
+			int minZ = Integer.MAX_VALUE;
+			int maxZ = Integer.MIN_VALUE;
 
-			if (positions.contains(pack(x + 1, z))) {
-				alongX++;
+			for (int[] cell : group) {
+				minX = Math.min(minX, cell[0]);
+				maxX = Math.max(maxX, cell[0]);
+				minZ = Math.min(minZ, cell[1]);
+				maxZ = Math.max(maxZ, cell[1]);
 			}
 
-			if (positions.contains(pack(x, z + 1))) {
+			if (maxX - minX > maxZ - minZ) {
+				alongX++;
+			} else if (maxZ - minZ > maxX - minX) {
 				alongZ++;
 			}
 		}
 
-		if (alongX == 0 && alongZ == 0) {
-			return RowAxis.Z;
-		}
-
-		return alongX >= alongZ ? RowAxis.X : RowAxis.Z;
+		return alongX > alongZ ? RowAxis.X : RowAxis.Z;
 	}
 
-	private static List<int[]> rowOrigins(Set<Long> positions, RowAxis axis) {
-		List<int[]> origins = new ArrayList<>();
-
-		for (long packed : positions) {
-			int x = unpackFirst(packed);
-			int z = unpackSecond(packed);
-			long previous = axis == RowAxis.X ? pack(x - 1, z) : pack(x, z - 1);
-
-			if (!positions.contains(previous)) {
-				origins.add(new int[] {x, z});
-			}
-		}
-
-		origins.sort((a, b) -> a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]));
-		return origins;
-	}
-
-	private static int rowLength(Set<Long> positions, RowAxis axis, int[] origin) {
-		int length = 0;
-		int x = origin[0];
-		int z = origin[1];
-
-		while (positions.contains(pack(x, z))) {
-			length++;
-
-			if (axis == RowAxis.X) {
-				x++;
-			} else {
-				z++;
-			}
-		}
-
-		return Math.max(1, length);
-	}
-
-	/**
-	 * Spacing is the greatest common divisor of the gaps between node coordinates, so a plan
-	 * with whole rows missing still comes back with the right step.
-	 */
 	private static int detectSpacing(List<int[]> origins) {
 		int spacing = 0;
 		spacing = gcdOfDeltas(origins, 0, spacing);

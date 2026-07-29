@@ -120,6 +120,29 @@ public final class ScanCache {
 	 *
 	 * @return {@code [missing tally of scanned nodes, tally of nodes that could not be read]}
 	 */
+	/**
+	 * Something is built here but the node is not finished: blocks are going in, or the pyramid
+	 * is up and a beacon is missing.
+	 *
+	 * <p>This is the case that needs its own colour. A node one beacon short of working looks
+	 * finished from anywhere, and you only find out when the perimeter does not spawn proof.
+	 */
+	public static boolean partial(NodeKey key) {
+		NodeScan scan = RESULTS.get(key);
+
+		if (scan == null || !scan.loaded() || scan.found() <= 0) {
+			return false;
+		}
+
+		return !scan.complete() || !scan.beaconsPlaced();
+	}
+
+	/** Everything the plan asks for at this node is in the world, beacons included. */
+	public static boolean finished(NodeKey key) {
+		NodeScan scan = RESULTS.get(key);
+		return scan != null && scan.loaded() && scan.complete() && scan.beaconsPlaced();
+	}
+
 	public static MaterialTally[] missingTotals() {
 		PerimeterPlan plan = PlanManager.plan();
 		MaterialTally missing = new MaterialTally();

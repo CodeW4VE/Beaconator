@@ -69,12 +69,19 @@ public class BeaconatorConfig {
 	// -- colours (ARGB) -------------------------------------------------------
 	public int colorPending = 0xFFFFFFFF;
 	public int colorPlaced = 0xFF57E36B;
+	/**
+	 * Started but not finished, which includes a node whose pyramid is up but is one beacon short.
+	 * Green used to creep in as the blocks went in, so a node missing its second beacon looked
+	 * done from any distance.
+	 */
+	public int colorPartial = 0xFFFFD23F;
 	/** Dark grey rather than near black: the old value was invisible against stone. */
 	public int colorExcluded = 0xFF6C7078;
 	public int colorHover = 0xFFFFC24A;
 	/** Beam colours: red for what is missing, green for what is done, grey for excluded. */
 	public int colorBeamPending = 0xFFFF3B30;
 	public int colorBeamPlaced = 0xFF57E36B;
+	public int colorBeamPartial = 0xFFFFD23F;
 	public int colorBeamExcluded = 0xFF9AA0A8;
 	/** Used for the strip between nodes when the spacing leaves the perimeter uncovered. */
 	public int colorGap = 0xFFFF4040;
@@ -105,6 +112,12 @@ public class BeaconatorConfig {
 	public int autoScanDistance = 256;
 	/** Shade pending nodes towards green as their blocks go in. */
 	public boolean showProgressColor = true;
+
+	// -- layers ---------------------------------------------------------------
+	/** Which layer filter is on: 0 all, 1 a single layer, 2 a range. Kept between sessions. */
+	public int layerMode;
+	public int layerMin;
+	public int layerMax;
 
 	// -- keys -----------------------------------------------------------------
 	/**

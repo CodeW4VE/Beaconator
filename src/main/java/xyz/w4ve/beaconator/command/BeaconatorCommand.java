@@ -225,28 +225,18 @@ public final class BeaconatorCommand {
 
 		root.then(ClientCommandManager.literal("scan").executes(context -> scan(context.getSource())));
 
-		// Sharing the plan with the server. The server enforces that only operators can replace
-		// it; asking here as well would only tell a lie when the answer disagrees.
-		root.then(ClientCommandManager.literal("publish").executes(context -> {
-			if (!ClientSync.available()) {
-				return error(context.getSource(), "This server does not have Beaconator installed");
+		// Sharing: the tab does the rest, this is just the one line version.
+		root.then(ClientCommandManager.literal("share").executes(context -> {
+			if (!ClientSync.connected()) {
+				return error(context.getSource(), Lang.t("plan.no_server"));
 			}
 
 			if (!PlanManager.hasPlan()) {
 				return error(context.getSource(), Lang.t("no_plan"));
 			}
 
-			ClientSync.publish();
-			return reply(context.getSource(), "Sent the plan to the server");
-		}));
-
-		root.then(ClientCommandManager.literal("unpublish").executes(context -> {
-			if (!ClientSync.available()) {
-				return error(context.getSource(), "This server does not have Beaconator installed");
-			}
-
-			ClientSync.unpublish();
-			return reply(context.getSource(), "Asked the server to drop the shared plan");
+			ClientSync.share();
+			return reply(context.getSource(), Lang.t("share.pushed", PlanManager.plan().name()));
 		}));
 
 		root.then(ClientCommandManager.literal("undo").executes(context -> {

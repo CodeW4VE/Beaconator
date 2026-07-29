@@ -49,6 +49,7 @@ import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.model.PyramidCalculator;
 import xyz.w4ve.beaconator.model.RowAxis;
+import xyz.w4ve.beaconator.net.PlanListPayload;
 
 /**
  * The mod's screen. Everything worth seeing the current value of lives here, which is most
@@ -61,6 +62,7 @@ public class BeaconatorScreen extends Screen {
 		GRID("tab.grid"),
 		BLOCKS("tab.blocks"),
 		MATERIALS("tab.materials"),
+		SHARED("tab.shared"),
 		KEYS("tab.keys"),
 		DISPLAY("tab.display");
 
@@ -126,11 +128,25 @@ public class BeaconatorScreen extends Screen {
 		// Note: listeningFor survives init on purpose. Clicking a binding sets it and rebuilds the
 		// widgets to redraw the button, so clearing it here would cancel the listen in the same
 		// frame and no key could ever be bound. It is cleared when the tab or the screen changes.
-		int tabWidth = Math.min(76, (width - 16) / Tab.values().length);
-		int tabsX = width / 2 - (Tab.values().length * tabWidth) / 2;
+		// The Shared tab only exists where it can do something: a server without the mod never
+		// registers the channel, and an empty tab that says "not available" is just clutter.
+		List<Tab> tabs = new ArrayList<>();
 
-		for (int index = 0; index < Tab.values().length; index++) {
-			Tab tab = Tab.values()[index];
+		for (Tab tab : Tab.values()) {
+			if (tab != Tab.SHARED || ClientSync.connected()) {
+				tabs.add(tab);
+			}
+		}
+
+		if (!tabs.contains(activeTab)) {
+			activeTab = Tab.MAP;
+		}
+
+		int tabWidth = Math.min(76, (width - 16) / tabs.size());
+		int tabsX = width / 2 - (tabs.size() * tabWidth) / 2;
+
+		for (int index = 0; index < tabs.size(); index++) {
+			Tab tab = tabs.get(index);
 			Button button = Button.builder(Lang.c(tab.key), b -> {
 				activeTab = tab;
 				listeningFor = null;
@@ -143,7 +159,8 @@ public class BeaconatorScreen extends Screen {
 		addRenderableWidget(Button.builder(Lang.c("done"), button -> onClose())
 				.bounds(width / 2 - 50, height - 28, 100, 20).build());
 
-		boolean needsPlan = activeTab != Tab.PLAN && activeTab != Tab.DISPLAY && activeTab != Tab.KEYS;
+		boolean needsPlan = activeTab != Tab.PLAN && activeTab != Tab.DISPLAY
+				&& activeTab != Tab.KEYS && activeTab != Tab.SHARED;
 
 		if (!needsPlan || PlanManager.hasPlan()) {
 			switch (activeTab) {
@@ -152,6 +169,7 @@ public class BeaconatorScreen extends Screen {
 				case GRID -> initGrid();
 				case BLOCKS -> initBlocks();
 				case MATERIALS -> initMaterials();
+				case SHARED -> initShared();
 				case KEYS -> initKeys();
 				case DISPLAY -> initDisplay();
 			}
@@ -175,7 +193,9 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	private int mapHeight() {
-		return height - 52 - 46;
+		// Room for the two readout lines AND the Done button below them. At 46 the strip ran from
+		// height-46 to height-18 and the button sits at height-28, straight through the text.
+		return height - 52 - 64;
 	}
 
 	private void initMap() {
@@ -231,11 +251,20 @@ public class BeaconatorScreen extends Screen {
 		graphics.fill(0, mapY() + mapHeight(), width, mapY() + mapHeight() + 28, 0xC0101318);
 		graphics.drawString(font, MAP_VIEW.describe(plan), mapX() + 4, mapY() + mapHeight() + 4,
 				DIM_COLOR, false);
-		graphics.drawString(font, MAP_VIEW.selecting() ? Lang.t("map.hint_area") : Lang.t("map.hint"),
-				mapX() + 4, mapY() + mapHeight() + 16, DIM_COLOR, false);
+		// Two hints on one line, and on a narrow screen they used to overprint each other into
+		// mush. The mouse one wins the space; the arrow keys one gives way.
+		String mouseHint = MAP_VIEW.selecting() ? Lang.t("map.hint_area") : Lang.t("map.hint");
 		String moveHint = Lang.t("map.hint_move");
-		graphics.drawString(font, moveHint, width - 8 - font.width(moveHint),
-				mapY() + mapHeight() + 16, DIM_COLOR, false);
+		int hintY = mapY() + mapHeight() + 16;
+
+		if (font.width(mouseHint) + font.width(moveHint) + 24 <= width) {
+			graphics.drawString(font, moveHint, width - 8 - font.width(moveHint), hintY, DIM_COLOR, false);
+		} else {
+			moveHint = "";
+		}
+
+		int room = width - 16 - (moveHint.isEmpty() ? 0 : font.width(moveHint) + 12);
+		graphics.drawString(font, fit(mouseHint, room), mapX() + 4, hintY, DIM_COLOR, false);
 
 		NodeKey hovered = MAP_VIEW.hovered();
 
@@ -379,6 +408,15 @@ public class BeaconatorScreen extends Screen {
 		nameBox = new EditBox(font, left, y + 10, 150, 20, Component.literal("name"));
 		nameBox.setMaxLength(48);
 		nameBox.setValue(PlanManager.hasPlan() ? PlanManager.plan().name() : "perimeter");
+		// Set after the value, so filling the box in does not count as typing. Renaming as you
+		// type is the point: the box used to do nothing at all until you found the Save button,
+		// which is why nobody could tell what Save was for.
+		nameBox.setResponder(value -> {
+			if (PlanManager.hasPlan() && !value.isBlank()) {
+				PlanManager.plan().setName(value.trim());
+				touch();
+			}
+		});
 		addRenderableWidget(nameBox);
 
 		addRenderableWidget(Button.builder(Lang.c("plan.new"), button -> newPlan())
@@ -401,37 +439,36 @@ public class BeaconatorScreen extends Screen {
 		addRenderableWidget(Button.builder(Lang.c("plan.save"), button -> save())
 				.bounds(right, buttonsY, 150, 20).build());
 
+		// Says out loud that nothing is lost by closing. Saving by hand next to a button called
+		// "Export schematic" reads like the two do the same kind of thing, and they do not.
+		label(width / 2, buttonsY + 22, () -> Lang.t("plan.autosaves"), () -> DIM_COLOR, true);
+
 		addRenderableWidget(Button.builder(Lang.c("plan.open"), button -> openPlan())
-				.bounds(left, buttonsY + 24, 150, 20).build());
+				.bounds(left, buttonsY + 36, 150, 20).build());
 		addRenderableWidget(Button.builder(Lang.c("plan.delete"), button -> deletePlan())
-				.bounds(right, buttonsY + 24, 150, 20).build());
+				.bounds(right, buttonsY + 36, 150, 20).build());
 
 		addRenderableWidget(Button.builder(Lang.c("plan.import"), button -> importSchematic())
-				.bounds(left, buttonsY + 48, 150, 20).build());
+				.bounds(left, buttonsY + 60, 150, 20).build());
 		addRenderableWidget(Button.builder(Lang.c("plan.export"), button -> exportSchematic())
-				.bounds(right, buttonsY + 48, 150, 20).build());
+				.bounds(right, buttonsY + 60, 150, 20).build());
 
-		// Only offered where it can work: a server without the mod never registers the channel.
-		Button share = Button.builder(
-						Lang.c(ClientSync.shared() ? "plan.unpublish" : "plan.publish"), button -> {
-							if (ClientSync.shared()) {
-								ClientSync.unpublish();
-								setStatus(Lang.t("plan.unpublished"), OK_COLOR);
-							} else if (ClientSync.publish()) {
-								setStatus(Lang.t("plan.published"), OK_COLOR);
-							}
+		// Sharing lives in its own tab. One button here that half did it was how Save and Export
+		// ended up looking like the same kind of thing.
+		if (ClientSync.connected()) {
+			addRenderableWidget(Button.builder(Lang.c("share.push"), button -> {
+				if (ClientSync.share()) {
+					setStatus(Lang.t("share.pushed", PlanManager.plan().name()), OK_COLOR);
+				}
+			}).bounds(left, buttonsY + 84, 150, 20).build());
 
-							rebuildWidgets();
-						})
-				.bounds(left, buttonsY + 72, 150, 20).build();
-		share.active = ClientSync.available() && PlanManager.hasPlan();
-		addRenderableWidget(share);
-
-		if (!ClientSync.available()) {
-			label(right + 75, buttonsY + 78, () -> Lang.t("plan.no_server"), () -> DIM_COLOR, true);
+			addRenderableWidget(Button.builder(Lang.c("share.go"), button -> {
+				activeTab = Tab.SHARED;
+				rebuildWidgets();
+			}).bounds(right, buttonsY + 84, 150, 20).build());
 		}
 
-		label(width / 2, buttonsY + 100, () -> PlanManager.hasPlan()
+		label(width / 2, buttonsY + 112, () -> PlanManager.hasPlan()
 				? PlanManager.plan().dimension() + "  ·  " + PlanManager.plan().extents().nodeCount()
 						+ " " + Lang.t("nodes")
 				: Lang.t("no_plan"), () -> DIM_COLOR, true);
@@ -881,6 +918,74 @@ public class BeaconatorScreen extends Screen {
 		setStatus(Lang.t("keys.bound", Keys.describe(mapping)), OK_COLOR);
 	}
 
+	// ------------------------------------------------------------------ shared
+
+	/**
+	 * The plans the server is holding: open one, put yours up, take one down.
+	 *
+	 * <p>The whole point is that this needs no explaining. You see the list, you press the one you
+	 * want, and you are on the same perimeter as everyone else.
+	 */
+	private void initShared() {
+		int left = width / 2 - 154;
+		int right = width / 2 + 4;
+		int y = 34;
+
+		label(width / 2, y, () -> Lang.t("share.title"), () -> LABEL_COLOR, true);
+
+		List<PlanListPayload.Entry> entries = ClientSync.available();
+		int rowY = y + 16;
+
+		if (entries.isEmpty()) {
+			label(width / 2, rowY + 14, () -> Lang.t("share.empty"), () -> DIM_COLOR, true);
+		}
+
+		// Room for six before it would run into the buttons at the bottom. More than that on one
+		// server means something has gone wrong socially, not technically.
+		for (int index = 0; index < Math.min(entries.size(), 6); index++) {
+			PlanListPayload.Entry entry = entries.get(index);
+			int entryY = rowY + index * 24;
+			boolean open = entry.name().equals(ClientSync.openShared());
+
+			Button pick = Button.builder(
+					Component.literal(fit((open ? "> " : "") + entry.name(), 220)), button -> {
+						ClientSync.open(entry.name());
+						setStatus(Lang.t("share.opening", entry.name()), OK_COLOR);
+					}).bounds(left, entryY, 232, 20).build();
+			pick.active = !open;
+			addRenderableWidget(pick);
+
+			addRenderableWidget(Button.builder(Lang.c("share.remove"), button -> {
+				ClientSync.remove(entry.name());
+				setStatus(Lang.t("share.removed", entry.name()), OK_COLOR);
+				rebuildWidgets();
+			}).bounds(left + 236, entryY, 72, 20).build());
+
+			label(left + 4, entryY + 24, () -> "", () -> DIM_COLOR, false);
+		}
+
+		int bottom = rowY + Math.max(1, Math.min(entries.size(), 6)) * 24 + 12;
+
+		Button share = Button.builder(Lang.c("share.push"), button -> {
+			if (ClientSync.share()) {
+				setStatus(Lang.t("share.pushed", PlanManager.plan().name()), OK_COLOR);
+				rebuildWidgets();
+			}
+		}).bounds(left, bottom, 150, 20).build();
+		share.active = PlanManager.hasPlan();
+		addRenderableWidget(share);
+
+		addRenderableWidget(Button.builder(Lang.c("share.refresh"), button -> {
+			ClientSync.open(ClientSync.openShared());
+			rebuildWidgets();
+		}).bounds(right, bottom, 150, 20).build());
+
+		label(width / 2, bottom + 26, () -> ClientSync.shared()
+				? Lang.t("share.on", ClientSync.openShared())
+				: Lang.t("share.off"), () -> DIM_COLOR, true);
+		label(width / 2, bottom + 38, () -> Lang.t("share.hint"), () -> DIM_COLOR, true);
+	}
+
 	// ----------------------------------------------------------------- display
 
 	private void initDisplay() {
@@ -977,15 +1082,21 @@ public class BeaconatorScreen extends Screen {
 					rebuildWidgets();
 				}).bounds(left, layerY, 150, 20).build());
 
-		addRenderableWidget(Button.builder(Lang.c("display.layer_up"), button -> {
+		// Greyed out on "all layers": they do nothing there, and a button that does nothing when
+		// you press it is worse than one you can see is unavailable.
+		Button layerUp = Button.builder(Lang.c("display.layer_up"), button -> {
 			LayerFilter.shift(1);
 			rebuildWidgets();
-		}).bounds(right, layerY, 74, 20).build());
+		}).bounds(right, layerY, 74, 20).build();
+		layerUp.active = LayerFilter.active();
+		addRenderableWidget(layerUp);
 
-		addRenderableWidget(Button.builder(Lang.c("display.layer_down"), button -> {
+		Button layerDown = Button.builder(Lang.c("display.layer_down"), button -> {
 			LayerFilter.shift(-1);
 			rebuildWidgets();
-		}).bounds(right + 76, layerY, 74, 20).build());
+		}).bounds(right + 76, layerY, 74, 20).build();
+		layerDown.active = LayerFilter.active();
+		addRenderableWidget(layerDown);
 	}
 
 	// ----------------------------------------------------------------- actions
@@ -1186,24 +1297,11 @@ public class BeaconatorScreen extends Screen {
 		return button;
 	}
 
-	/** A minus button, a live value in the middle, and a plus button. */
+	/** A number with a bar: ends, left and right click, and the scroll wheel. */
 	private void stepper(int x, int y, String label, IntSupplier get, IntConsumer set,
 			int min, int max, int step) {
-		addRenderableWidget(Button.builder(Component.literal("-"), button -> {
-			set.accept((int) Math.clamp((long) get.getAsInt() - step, min, max));
-			rebuildWidgets();
-		}).bounds(x, y, 20, 20).build());
-
-		addRenderableWidget(Button.builder(Component.literal("+"), button -> {
-			set.accept((int) Math.clamp((long) get.getAsInt() + step, min, max));
-			rebuildWidgets();
-		}).bounds(x + 130, y, 20, 20).build());
-
-		// Only the 110 px between the two buttons are free, so the label yields, not the value.
-		label(x + 75, y + 6, () -> {
-			String value = ": " + get.getAsInt();
-			return fit(label, 106 - font.width(value)) + value;
-		}, () -> LABEL_COLOR, true);
+		addRenderableWidget(new StepperWidget(x, y, 150, 20, label, get, set, min, max, step,
+				this::rebuildWidgets));
 	}
 
 	private void label(int x, int y, Supplier<String> text, Supplier<Integer> color, boolean centered) {

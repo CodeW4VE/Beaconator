@@ -8,16 +8,18 @@ import net.minecraft.resources.ResourceLocation;
 import xyz.w4ve.beaconator.BeaconatorMod;
 
 /**
- * A whole shared plan, as the JSON the plan files already use.
+ * One shared plan, as the JSON the plan files already use.
  *
- * <p>Server to client on join and whenever the plan is replaced; client to server to publish one.
- * An empty {@code json} means there is no shared plan, which is how the server says "I have
- * nothing" and how a client asks for the plan to be taken down.
+ * <p>Server to client when you ask for a plan from the list; client to server to put one up there.
+ * An empty {@code json} going up means "take this one down".
  *
  * <p>A client without the mod never registers the channel and is never sent anything, the same
  * scheme Servux uses.
+ *
+ * @param name the plan's name, which is also how it is filed on the server
+ * @param json the plan itself, empty to delete
  */
-public record PlanPayload(String json) implements CustomPacketPayload {
+public record PlanPayload(String name, String json) implements CustomPacketPayload {
 	public static final CustomPacketPayload.Type<PlanPayload> TYPE =
 			new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(BeaconatorMod.MOD_ID, "plan"));
 
@@ -26,13 +28,11 @@ public record PlanPayload(String json) implements CustomPacketPayload {
 	 * still a cap: an unbounded string on the wire is how a client crashes a server.
 	 */
 	public static final StreamCodec<RegistryFriendlyByteBuf, PlanPayload> CODEC = StreamCodec.composite(
-			ByteBufCodecs.stringUtf8(1 << 20), PlanPayload::json, PlanPayload::new);
+			ByteBufCodecs.stringUtf8(64), PlanPayload::name,
+			ByteBufCodecs.stringUtf8(1 << 20), PlanPayload::json,
+			PlanPayload::new);
 
-	public static PlanPayload none() {
-		return new PlanPayload("");
-	}
-
-	public boolean isEmpty() {
+	public boolean isDelete() {
 		return json.isBlank();
 	}
 

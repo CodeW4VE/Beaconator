@@ -41,6 +41,7 @@ public final class Lang {
 		put("tab.materials", "Materials", "Materiales");
 		put("tab.keys", "Keys", "Teclas");
 		put("tab.display", "Display", "Pantalla");
+		put("tab.shared", "Server", "Servidor");
 
 		// shared
 		put("done", "Done", "Listo");
@@ -78,20 +79,35 @@ public final class Lang {
 		// plan
 		put("plan.name", "Name", "Nombre");
 		put("plan.new", "New plan here", "Plan nuevo aquí");
-		put("plan.centre", "Centre", "Centro");
-		put("plan.apply_centre", "Apply centre", "Aplicar centro");
-		put("plan.here", "Here", "Aquí");
+		put("plan.centre", "Centre  (x, y, z)", "Centro  (x, y, z)");
+		put("plan.apply_centre", "Move centre", "Mover el centro");
+		put("plan.here", "Centre on me", "Centrar en mí");
 		put("plan.detect", "Detect from world", "Detectar del mundo");
-		put("plan.save", "Save", "Guardar");
+		put("plan.save", "Save plan now", "Guardar el plan ya");
 		put("plan.open", "Open plan", "Abrir plan");
 		put("plan.delete", "Delete plan", "Borrar plan");
-		put("plan.import", "Import schematic", "Importar litematic");
-		put("plan.export", "Export schematic", "Exportar litematic");
+		put("plan.import", "Import .litematic", "Importar .litematic");
+		put("plan.export", "Export .litematic", "Exportar .litematic");
 		put("plan.pick_open", "Open a plan", "Abrir un plan");
 		put("plan.pick_delete", "Delete a plan", "Borrar un plan");
 		put("plan.pick_import", "Import a schematic", "Importar un litematic");
 		put("plan.empty_list", "Nothing here yet", "Todavía no hay nada");
 		put("plan.saved", "Saved", "Guardado");
+		put("plan.autosaves", "The plan saves itself when you close this screen",
+				"El plan se guarda solo al cerrar esta pantalla");
+		put("share.title", "Plans shared on this server", "Planes compartidos en este server");
+		put("share.empty", "Nobody has shared a plan here yet", "Todavía nadie compartió un plan acá");
+		put("share.push", "Share mine", "Compartir el mío");
+		put("share.go", "Server plans", "Planes del server");
+		put("share.remove", "Remove", "Quitar");
+		put("share.refresh", "Refresh", "Recargar");
+		put("share.opened", "Opened the shared plan \"%s\"", "Abriste el plan compartido \"%s\"");
+		put("share.opening", "Asking for \"%s\"...", "Pidiendo \"%s\"...");
+		put("share.pushed", "\"%s\" is on the server now", "\"%s\" ya está en el server");
+		put("share.removed", "Took \"%s\" off the server", "Sacaste \"%s\" del server");
+		put("share.on", "You are on \"%s\": what you mark, everyone sees", "Estás en \"%s\": lo que marques lo ven todos");
+		put("share.off", "You are on a local plan, only you see it", "Estás en un plan local, sólo lo ves vos");
+		put("share.hint", "Sharing your plan puts a copy on the server under its own name", "Compartir tu plan sube una copia al server con su nombre");
 		put("plan.save_failed", "Could not save, check the log", "No se pudo guardar, mirá el log");
 		put("plan.created", "Plan \"%s\" centred where you are standing",
 				"Plan \"%s\" centrado donde estás parado");
@@ -204,10 +220,6 @@ public final class Lang {
 		// hud
 		put("hud.edit", "edit", "edición");
 		put("hud.shared", "shared", "compartido");
-		put("plan.publish", "Share with the server", "Compartir con el server");
-		put("plan.unpublish", "Stop sharing", "Dejar de compartir");
-		put("plan.published", "Sent to the server. Everyone with the mod sees it now.", "Enviado al server. Todos los que tengan el mod lo ven.");
-		put("plan.unpublished", "Asked the server to drop the shared plan", "Le pedí al server que suelte el plan compartido");
 		put("plan.no_server", "This server does not have Beaconator", "Este server no tiene Beaconator");
 		put("hud.grid", "%d x %d nodes (ring %d)", "%d x %d nodos (anillo %d)");
 		put("hud.grid_custom", "%d x %d nodes (custom sides)", "%d x %d nodos (lados a mano)");

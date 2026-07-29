@@ -177,9 +177,19 @@ public final class PerimeterRenderer {
 				continue;
 			}
 
+			// Same three way read as the boxes, and this is where it earns its keep: a yellow
+			// beam across the site is a node that looks built and is one beacon short.
 			int color = switch (status) {
-				case PLACED -> config.colorBeamPlaced;
 				case EXCLUDED -> config.colorBeamExcluded;
+				case PLACED, PENDING -> {
+					if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(node.key())) {
+						yield config.colorBeamPlaced;
+					}
+
+					yield xyz.w4ve.beaconator.client.scan.ScanCache.partial(node.key())
+							? config.colorBeamPartial
+							: status == NodeStatus.PLACED ? config.colorBeamPlaced : config.colorBeamPending;
+				}
 				default -> config.colorBeamPending;
 			};
 
@@ -477,11 +487,18 @@ public final class PerimeterRenderer {
 			return config.colorHover;
 		}
 
-		if (status == NodeStatus.PENDING && config.showProgressColor && key != null) {
-			var scan = xyz.w4ve.beaconator.client.scan.ScanCache.get(key);
+		// Three states you can read at a glance instead of a gradient you have to interpret:
+		// untouched, started, and actually finished.
+		// Excluded nodes keep their own colour: grey already says "not one of ours", and that
+		// matters more than how far along it is.
+		if (config.showProgressColor && key != null
+				&& (status == NodeStatus.PENDING || status == NodeStatus.PLACED)) {
+			if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(key)) {
+				return config.colorPlaced;
+			}
 
-			if (scan != null && scan.loaded() && scan.progress() > 0.0f) {
-				return blend(config.colorPending, config.colorPlaced, scan.progress());
+			if (xyz.w4ve.beaconator.client.scan.ScanCache.partial(key)) {
+				return config.colorPartial;
 			}
 		}
 
