@@ -33,7 +33,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORK = ROOT / "build" / "multiversion"
 VARIANTS = ROOT / "variants"
-JDK = pathlib.Path.home() / ".local/opt/jdk-21"
+# Fedora has no java-21 package, so locally this is the Temurin unpacked by hand. On CI the
+# runner has already set JAVA_HOME to a 21, and that is the one to use.
+JDK = pathlib.Path(__import__("os").environ.get("JAVA_HOME")
+                   or pathlib.Path.home() / ".local/opt/jdk-21")
 
 # Minecraft version -> the Fabric API build for it. Anything not listed is not shipped.
 # Order matters: it is the order variant directories stack in.

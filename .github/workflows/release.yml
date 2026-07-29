@@ -1,12 +1,17 @@
-# Push a tag like `v1.1.0` and this builds the mod and publishes a GitHub
-# Release with the jar attached. No manual upload needed.
+# Push a tag like `v1.1.2` and this builds every version of the mod and publishes them, to the
+# GitHub Release and to Modrinth. Nothing is uploaded by hand afterwards.
 #
-#   git tag v1.1.0
-#   git push origin v1.1.0
+#   git tag v1.1.2
+#   git push origin v1.1.2
 #
-# Modrinth is optional: set the repo variable MODRINTH_ID and the secret
-# MODRINTH_TOKEN and the last step uploads there too. Without them it is
-# skipped and only the GitHub Release happens.
+# Modrinth is optional: set the repo variable MODRINTH_ID and the secret MODRINTH_TOKEN and the
+# last step uploads there too. Without them it is skipped and only the GitHub Release happens.
+#
+# This used to build one jar with `gradlew build` — the 1.21 one — and publish that alone, while
+# the other nine went up by hand. It also let the publishing action guess Modrinth's environment
+# field from fabric.mod.json, where `"environment": "*"` reads as `client_and_server`, and that
+# is the field whose staff rejects projects over. Both are the scripts' job now, and the
+# environment is stated rather than derived.
 
 name: release
 on:
@@ -32,36 +37,28 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          # Ten builds share one dependency cache; without it every release re-downloads ten
+          # Minecraft jars and ten Fabric APIs.
+          cache: 'gradle'
 
-      - name: build
+      # One jar per Minecraft version, each compiled against that version's real mappings, into
+      # build/multiversion/. The model tests run on every one of them on the way.
+      - name: build every version
         run: |
           chmod +x ./gradlew
-          ./gradlew build
+          python3 tools/multiversion.py
 
+      # No sources jar to exclude here: multiversion.py copies out the mod jars only, and it was
+      # the sources one, first alphabetically, that used to become the primary download.
       - name: publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/beaconator-*.jar
+          files: build/multiversion/beaconator-*.jar
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-      # Deleted rather than excluded by a pattern: a `!` line did not stop
-      # mc-publish picking it up, and being first alphabetically it became the
-      # primary download twice, so everyone pressing Download on Modrinth got a
-      # jar that is not a mod. The GitHub release above has already taken its
-      # copy, so there is nothing to lose here.
-      - name: keep the sources jar out of modrinth
-        run: rm -f build/libs/*-sources.jar
-
-      # Game versions, loaders and dependencies are read from fabric.mod.json,
-      # so there is one place to keep them right.
+      # Skips whatever is already up, so re-running after a failure finishes the release instead
+      # of uploading second copies of the jars that made it.
       - name: publish to modrinth
         if: env.MODRINTH_ID != '' && env.MODRINTH_TOKEN != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: ${{ vars.MODRINTH_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          files: build/libs/beaconator-*+*.jar
-          name: ${{ github.ref_name }}
-          version-type: release
-          changelog-file: CHANGELOG.md
+        run: python3 tools/publish_modrinth.py

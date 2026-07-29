@@ -3,18 +3,36 @@
 Everything needed to put a build on GitHub and Modrinth. Written down because the fiddly parts
 are the ones you only do once every few months.
 
-## Release on GitHub
+## Releasing
 
-Tag driven. `.github/workflows/release.yml` builds the mod and attaches the jar to a GitHub
-Release when a tag starting with `v` is pushed.
+Tag driven, and that is the whole of it. `.github/workflows/release.yml` builds **every** version
+with `tools/multiversion.py`, attaches all of them to a GitHub Release, and uploads all of them to
+Modrinth with `tools/publish_modrinth.py`.
 
 ```sh
-# bump mod_version in gradle.properties first, then:
-git tag v1.0.0
-git push origin v1.0.0
+# bump mod_version in gradle.properties, write the CHANGELOG entry, then:
+git tag v1.1.2
+git push origin v1.1.2
 ```
 
-The jar lands in `build/libs/beaconator-<mod version>+<mc version>.jar`.
+The jars land in `build/multiversion/beaconator-<mod version>+<mc version>.jar`.
+
+Nothing is uploaded by hand afterwards. It used to be: the workflow built the one jar `gradlew
+build` produces, which is the 1.21 one, and the other nine went up manually after every release.
+It also let the publishing action derive Modrinth's environment field from `fabric.mod.json`,
+where `"environment": "*"` reads as `client_and_server`, and that is the field Modrinth's staff
+rejects projects over. `tools/publish_modrinth.py` states it instead:
+**`client_only_server_optional`**, a client mod whose server side is a bonus. If that ever stops
+being true of the mod, that constant is where it changes.
+
+The upload skips versions that are already up, by version number and by file name, so re-running
+a failed release finishes it rather than uploading second copies.
+
+To see what it would do without uploading anything:
+
+```sh
+MODRINTH_TOKEN=... python3 tools/publish_modrinth.py --dry-run
+```
 
 ## Modrinth
 
@@ -24,14 +42,16 @@ until it is submitted for review, and it cannot be submitted until it has at lea
 
 So the remaining steps are:
 
-1. Push a `v*` tag. The release workflow builds the jar, makes the GitHub Release and uploads the
-   version to Modrinth (`MODRINTH_ID` variable and `MODRINTH_TOKEN` secret are already set on the
-   repo).
+1. Push a `v*` tag. The release workflow builds every jar, makes the GitHub Release and uploads
+   every version to Modrinth (`MODRINTH_ID` variable and `MODRINTH_TOKEN` secret are already set
+   on the repo).
 2. On the Modrinth page, hit **Submit for review**. Only a human can do that.
 
-The client/server side shows as "unknown" until the first version lands, because Modrinth now
-derives it from the versions themselves. `fabric.mod.json` declares `"environment": "client"`, so
-it sorts itself out on upload.
+The client/server side shows as "unknown" until the first version lands, because Modrinth derives
+it from the versions themselves — and "unknown" is what gets a project rejected under section 5.1
+of the content rules. It does not sort itself out from `fabric.mod.json`: the environment is
+declared explicitly by the upload script, in the POST that creates each version. Setting it by
+`PATCH` afterwards works but takes a while to show up, so do not sit there re-sending it.
 
 ### For reference: what the project was created with
 
