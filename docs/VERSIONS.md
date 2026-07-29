@@ -1,6 +1,6 @@
 # Moving to newer Minecraft versions
 
-Beaconator ships **1.21 through 1.21.8**, one jar per version, all built from this one source
+Beaconator ships **1.21 through 1.21.8, and 1.21.11**, one jar per version, all built from this one source
 tree. This is what each jump actually cost, measured rather than guessed: the mod was compiled
 against every version and the compiler errors read one by one.
 
@@ -15,9 +15,9 @@ against every version and the compiler errors read one by one.
 | 1.21.6 | 8 on top of 1.21.5 | **shipped**, the drawing layer rewritten again |
 | 1.21.7 | same as 1.21.6 | **shipped**, free |
 | 1.21.8 | same as 1.21.6 | **shipped**, free |
-| 1.21.9 | 36 | Fabric API has no world render event any more. See [PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md) |
-| 1.21.10 | 36 | as above |
-| 1.21.11 | 70 | as above, plus more screen churn |
+| 1.21.9 | 36 | **skipped.** Fabric API removed the world render events here and never brought them back on this branch |
+| 1.21.10 | 36 | **skipped.** Has the events, not the 1.21.11 renames; would need its own table and variants |
+| 1.21.11 | 70 | **shipped**, four variant files and a table. See [PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md) |
 
 ## How the shipped versions are built
 
@@ -71,8 +71,15 @@ render type for it.
 
 **1.21.7** and **1.21.8** needed nothing at all.
 
-**1.21.9** is a wall of a different kind, and it is not about drawing: Fabric API removed
-`WorldRenderEvents` outright, so there is nothing to hook. See
+**1.21.9 and 1.21.10** are skipped. Fabric API removed `WorldRenderEvents` in 1.21.9, so there is
+nothing to hook to draw in the world there, and it redesigned them on the 1.21.10 branch instead
+of bringing them back to 1.21.9. 1.21.10 has the events but predates the renames, so it would cost
+its own row in the table and its own copies of four variant files, for a version that was current
+for a month.
+
+**1.21.11** is shipped: the renames are a table, the event is a substitution, and the drawing
+files are variants. The one thing that changed shape is line width, which stopped being global
+state and became a per vertex attribute read by vanilla's line shader. See
 [PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md).
 
 ## What does not break

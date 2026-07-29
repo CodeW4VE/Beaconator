@@ -47,16 +47,22 @@ TARGETS = {
     "1.21.6": "0.128.2+1.21.6",
     "1.21.7": "0.129.0+1.21.7",
     "1.21.8": "0.136.1+1.21.8",
+    "1.21.11": "0.141.6+1.21.11",
 }
 
-# Measured, not shipped. 1.21.9 is where Fabric API dropped WorldRenderEvents outright, so the
-# mod has nothing to hook to draw in the world and the port needs a mixin of our own before any
-# of the rest matters. Listed here so `--errors` can still be pointed at them.
+# Measured, not shipped, and neither of these is worth shipping.
+#
+# 1.21.9 is the version Fabric API dropped WorldRenderEvents in, and it never got them back: the
+# redesigned events landed on the 1.21.10 branch, and 1.21.9's last Fabric API is from December.
+# There is nothing there to hook to draw in the world, short of a mixin of our own.
+#
+# 1.21.10 has the events but not the renames of 1.21.11, so it would need its own row in RULES
+# and its own copies of the four variant files. It was current for a month and its Fabric API
+# stopped in December as well. Left here so `--errors` can still be pointed at either of them.
 # See docs/PORT-1.21.9-PLUS.md.
 UNSHIPPED = {
     "1.21.9": "0.134.1+1.21.9",
     "1.21.10": "0.138.4+1.21.10",
-    "1.21.11": "0.141.6+1.21.11",
 }
 
 # What changed and when. Applied in order to every file listed, for versions at or above the key.
@@ -130,6 +136,128 @@ SINCE_1_21_6 = SINCE_1_21_5 + [
      "net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED"),
 ]
 
+# 1.21.9 rewrote how a mod draws in the world and how it hears about input. The world render
+# event is the one thing here that is not a rename, and it is not a rewrite either: Fabric took
+# the event suite away in 1.21.9 and brought it back, redesigned, in 0.137.0+1.21.10. So this
+# table describes 1.21.10 and up, and 1.21.9 itself is left where it fell: nothing to hook.
+SINCE_1_21_9 = SINCE_1_21_6 + [
+    # The world render event moved package and lost AFTER_TRANSLUCENT. END_MAIN is the closest
+    # equivalent: the end of the main pass, after translucent terrain and before the GUI. The
+    # culling moved with it, into the extraction phase, because that is where the frustum lives.
+    ("net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents",
+     "net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents"),
+    ("WorldRenderEvents.AFTER_TRANSLUCENT.register(PerimeterRenderer::render);",
+     "WorldRenderEvents.END_EXTRACTION.register(PerimeterRenderer::extract);\n"
+     "\t\tWorldRenderEvents.END_MAIN.register(PerimeterRenderer::render);"),
+
+    # Mouse and key handling take an event object rather than loose numbers. The bodies do not
+    # change: each handler unpacks the event back into the names the body already uses. Ugly
+    # here, invisible in the source, and it keeps one copy of a 1500 line screen.
+    # The event types are spelled out in full rather than imported: these headers are in four
+    # files, only one of which has an import block this table could reliably hook onto.
+    ("public boolean mouseClicked(double mouseX, double mouseY, int button) {",
+     "public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,\n"
+     "\t\t\tboolean doubled) {\n"
+     "\t\tdouble mouseX = event.x();\n"
+     "\t\tdouble mouseY = event.y();\n"
+     "\t\tint button = event.button();"),
+    ("super.mouseClicked(mouseX, mouseY, button)", "super.mouseClicked(event, doubled)"),
+    ("public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {",
+     "public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event,\n"
+     "\t\t\tdouble dragX, double dragY) {\n"
+     "\t\tdouble mouseX = event.x();\n"
+     "\t\tdouble mouseY = event.y();\n"
+     "\t\tint button = event.button();"),
+    ("super.mouseDragged(mouseX, mouseY, button, dragX, dragY)",
+     "super.mouseDragged(event, dragX, dragY)"),
+    ("public boolean mouseReleased(double mouseX, double mouseY, int button) {",
+     "public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {\n"
+     "\t\tdouble mouseX = event.x();\n"
+     "\t\tdouble mouseY = event.y();\n"
+     "\t\tint button = event.button();"),
+    ("super.mouseReleased(mouseX, mouseY, button)", "super.mouseReleased(event)"),
+    ("public boolean keyPressed(int keyCode, int scanCode, int modifiers) {",
+     "public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {\n"
+     "\t\tint keyCode = event.key();\n"
+     "\t\tint scanCode = event.scancode();"),
+    ("super.keyPressed(keyCode, scanCode, modifiers)", "super.keyPressed(event)"),
+    ("InputConstants.getKey(keyCode, scanCode)", "InputConstants.getKey(event)"),
+
+    # Screen.hasShiftDown and friends are gone: they are the event's business now. Keys asks
+    # outside of any event, on a tick and on a scroll, so it asks the window instead.
+    ("""	public static int heldModifiers() {
+		return (Screen.hasShiftDown() ? SHIFT : 0)
+				| (Screen.hasControlDown() ? CONTROL : 0)
+				| (Screen.hasAltDown() ? ALT : 0);
+	}""",
+     """	private static boolean held(int left, int right) {
+		return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), left)
+				|| InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), right);
+	}
+
+	private static boolean shiftDown() {
+		return held(InputConstants.KEY_LSHIFT, InputConstants.KEY_RSHIFT);
+	}
+
+	private static boolean controlDown() {
+		return held(InputConstants.KEY_LCONTROL, InputConstants.KEY_RCONTROL);
+	}
+
+	private static boolean altDown() {
+		return held(InputConstants.KEY_LALT, InputConstants.KEY_RALT);
+	}
+
+	public static int heldModifiers() {
+		return (shiftDown() ? SHIFT : 0) | (controlDown() ? CONTROL : 0) | (altDown() ? ALT : 0);
+	}"""),
+    ("Screen.hasShiftDown()", "shiftDown()"),
+    ("Screen.hasControlDown()", "controlDown()"),
+    ("Screen.hasAltDown()", "altDown()"),
+    # What is left is inside a handler, where the event is the one that knows.
+    ("hasShiftDown()", "event.hasShiftDown()"),
+    ("hasControlDown()", "event.hasControlDown()"),
+
+    # A key mapping's category is a registered object rather than a bare translation key, and the
+    # key is built from its identifier: hence the second entry in the language files.
+    ('private static final String CATEGORY = "key.categories.beaconator";',
+     "private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(\n"
+     '\t\t\tnet.minecraft.resources.ResourceLocation.fromNamespaceAndPath("beaconator",\n'
+     '\t\t\t\t\t"beaconator"));'),
+
+    # A cycling button is told its starting value when it is built rather than after. That is the
+    # whole of variants/1.21.10/.../Cycler.java, which is why nothing about it appears here.
+
+    # A button no longer draws itself: AbstractButton.renderWidget is final and calls
+    # renderContents, which is where a subclass gets to draw. The default background comes from
+    # renderDefaultSprite, because Button is abstract now and has no renderContents to call.
+    # Only the button: a plain AbstractWidget still overrides renderWidget, so the next line of
+    # ColourButton comes along to tell the two identical headers apart.
+    ("""	protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+		var font = net.minecraft.client.Minecraft.getInstance().font;""",
+     """	protected void renderContents(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+		var font = net.minecraft.client.Minecraft.getInstance().font;"""),
+    ("super.renderWidget(graphics, mouseX, mouseY, delta);", "renderDefaultSprite(graphics);"),
+
+    # A list entry is told where it is rather than being handed its bounds every frame.
+    ("""		public void render(GuiGraphics graphics, int index, int top, int left, int width, int height,
+				int mouseX, int mouseY, boolean hovered, float partialTick) {
+			graphics.drawString(font, name, left + 4, top + 5, 0xFFFFFF, false);""",
+     """		public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered,
+				float partialTick) {
+			graphics.drawString(font, name, getX() + 4, getY() + 5, 0xFFFFFF, false);"""),
+]
+
+# 1.21.11 renamed a pile of things that had kept their names since forever, none of which change
+# behaviour: ResourceLocation is called Identifier, the key inside a ResourceKey is reached with
+# identifier() rather than location(), GameProfile became a record, and a player reaches the
+# server through its level instead of directly.
+SINCE_1_21_11 = SINCE_1_21_9 + [
+    ("ResourceLocation", "Identifier"),
+    (".dimension().location()", ".dimension().identifier()"),
+    (".getGameProfile().getName()", ".getGameProfile().name()"),
+    ("player.getServer()", "player.level().getServer()"),
+]
+
 RULES = {
     "1.21.2": SINCE_1_21_2,
     "1.21.3": SINCE_1_21_2,
@@ -138,9 +266,9 @@ RULES = {
     "1.21.6": SINCE_1_21_6,
     "1.21.7": SINCE_1_21_6,
     "1.21.8": SINCE_1_21_6,
-    "1.21.9": SINCE_1_21_6,
-    "1.21.10": SINCE_1_21_6,
-    "1.21.11": SINCE_1_21_6,
+    "1.21.9": SINCE_1_21_9,
+    "1.21.10": SINCE_1_21_9,
+    "1.21.11": SINCE_1_21_11,
 }
 
 

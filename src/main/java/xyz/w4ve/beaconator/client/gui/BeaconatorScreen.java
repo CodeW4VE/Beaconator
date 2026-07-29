@@ -510,20 +510,19 @@ public class BeaconatorScreen extends Screen {
 
 		int cyclesY = sidesY + 62;
 
-		addRenderableWidget(CycleButton.<Integer>builder(value -> Component.literal(
-						Lang.t(value == 1 ? "grid.beacons_one" : "grid.beacons_many", value)))
+		addRenderableWidget(Cycler.<Integer>builder(value -> Component.literal(
+						Lang.t(value == 1 ? "grid.beacons_one" : "grid.beacons_many", value)),
+						plan.beaconsPerNode())
 				.withValues(1, 2, 3, 4, 5, 6)
-				.withInitialValue(plan.beaconsPerNode())
 				.displayOnlyValue()
 				.create(left, cyclesY, 150, 20, Component.empty(), (button, value) -> {
 					plan.setBeaconsPerNode(value);
 					touch();
 				}));
 
-		addRenderableWidget(CycleButton.<Integer>builder(value -> Component.literal(
-						Lang.t("grid.level", value, 10 * value + 10)))
+		addRenderableWidget(Cycler.<Integer>builder(value -> Component.literal(
+						Lang.t("grid.level", value, 10 * value + 10)), plan.level())
 				.withValues(1, 2, 3, 4)
-				.withInitialValue(plan.level())
 				.displayOnlyValue()
 				.create(right, cyclesY, 150, 20, Component.empty(), (button, value) -> {
 					plan.setLevel(value);
@@ -532,11 +531,11 @@ public class BeaconatorScreen extends Screen {
 
 		// All four quarter turns, so the beacons of a node can hang off whichever side of it
 		// suits the perimeter, not only east and south.
-		addRenderableWidget(CycleButton.<RowAxis>builder(
+		addRenderableWidget(Cycler.<RowAxis>builder(
 						value -> Component.literal(fit(Lang.t("grid.axis",
-								value.degrees() + "\u00b0 " + directionName(value)), 142)))
+								value.degrees() + "\u00b0 " + directionName(value)), 142)),
+						plan.rowAxis())
 				.withValues(RowAxis.values())
-				.withInitialValue(plan.rowAxis())
 				.displayOnlyValue()
 				.create(left, cyclesY + 24, 150, 20, Component.empty(), (button, value) -> {
 					plan.setRowAxis(value);
@@ -1036,13 +1035,12 @@ public class BeaconatorScreen extends Screen {
 
 		// displayOnlyValue, or the widget prefixes the value with an empty message and a stray
 		// ": " shows up at the front of the button.
-		addRenderableWidget(CycleButton.<Lang.Mode>builder(value -> Component.literal(fit(switch (value) {
+		addRenderableWidget(Cycler.<Lang.Mode>builder(value -> Component.literal(fit(switch (value) {
 					case AUTO -> Lang.t("display.language") + ": auto";
 					case ENGLISH -> Lang.t("display.language") + ": English";
 					case SPANISH -> Lang.t("display.language") + ": Espanol";
-				}, 142)))
+				}, 142)), config.language)
 				.withValues(Lang.Mode.values())
-				.withInitialValue(config.language)
 				.displayOnlyValue()
 				.create(left, y, 150, 20, Component.empty(), (button, value) -> {
 					config.language = value;
@@ -1056,14 +1054,13 @@ public class BeaconatorScreen extends Screen {
 		onOff(right, y + step, "display.outlines", config.renderWireframe,
 				value -> config.renderWireframe = value);
 
-		addRenderableWidget(CycleButton.<CoverageStyle>builder(
+		addRenderableWidget(Cycler.<CoverageStyle>builder(
 						value -> Component.literal(fit(switch (value) {
 							case SLAB -> Lang.t("display.style_slab");
 							case FLOOR -> Lang.t("display.style_floor");
 							case FULL -> Lang.t("display.style_full");
-						}, 142)))
+						}, 142)), config.coverageStyle)
 				.withValues(CoverageStyle.values())
-				.withInitialValue(config.coverageStyle)
 				.displayOnlyValue()
 				.create(left, y + step * 2, 150, 20, Component.empty(), (button, value) -> {
 					config.coverageStyle = value;

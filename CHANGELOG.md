@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1.1
+
+Adds **1.21.11**, and skips 1.21.9 and 1.21.10 on purpose.
+
+Fabric API removed the world render events in 1.21.9, which is what an earlier version of
+`docs/PORT-1.21.9-PLUS.md` called a wall that needed a mixin of our own. It did not: Fabric
+redesigned the events and shipped them again in `0.137.0+1.21.10`, so the mod hooks a supported
+API here as it always has. 1.21.9 never got them back on its own branch and its Fabric API stopped
+in December, and 1.21.10 has the events but predates the renames of 1.21.11, so it would cost its
+own substitution table and its own copies of four files. Neither is worth carrying.
+
+The largest part of the port was a rename nobody had flagged: `ResourceLocation` is called
+`Identifier` in 1.21.11, which took the four networking payload classes with it.
+
+- **Line width survived.** `RenderSystem.lineWidth` is gone in 1.21.11, because a line's width
+  stopped being a global switch and became an attribute of each of its vertices, read by vanilla's
+  own line shader. The wireframe now goes through that shader, so the setting still does what it
+  says, and it is honoured on hardware that used to ignore it and draw everything one pixel wide.
+- The mouse and key handlers take event objects, the widgets draw their contents rather than
+  themselves, and a cycling button is told its starting value when it is built. All of it is the
+  same code underneath: `BeaconatorScreen` is still one file, not one per version.
+- No change to anything on 1.21 through 1.21.8, which build and test exactly as before.
+
 ## 1.1.0
 
 Ships for **1.21 through 1.21.8**, one jar per version, all from the same source.

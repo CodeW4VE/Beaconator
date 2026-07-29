@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml/badge.svg)](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minecraft](https://img.shields.io/badge/minecraft-1.21--1.21.8-green.svg)](https://fabricmc.net/)
+[![Minecraft](https://img.shields.io/badge/minecraft-1.21--1.21.11-green.svg)](https://fabricmc.net/)
 
 A Fabric mod for planning and building **beacon perimeters**. Client side on its own; put the
 same jar on the server and the whole team shares one plan.
@@ -46,7 +46,7 @@ Beaconator only does perimeters, so it can do them properly.
 
 ## Requirements
 
-- Minecraft **1.21** through **1.21.8**, one jar per version
+- Minecraft **1.21** through **1.21.8**, and **1.21.11**, one jar per version
 - Fabric Loader 0.16 or newer
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 
