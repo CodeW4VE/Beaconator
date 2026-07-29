@@ -47,6 +47,13 @@ TARGETS = {
     "1.21.6": "0.128.2+1.21.6",
     "1.21.7": "0.129.0+1.21.7",
     "1.21.8": "0.136.1+1.21.8",
+}
+
+# Measured, not shipped. 1.21.9 is where Fabric API dropped WorldRenderEvents outright, so the
+# mod has nothing to hook to draw in the world and the port needs a mixin of our own before any
+# of the rest matters. Listed here so `--errors` can still be pointed at them.
+# See docs/PORT-1.21.9-PLUS.md.
+UNSHIPPED = {
     "1.21.9": "0.134.1+1.21.9",
     "1.21.10": "0.138.4+1.21.10",
     "1.21.11": "0.141.6+1.21.11",
@@ -137,6 +144,9 @@ RULES = {
 }
 
 
+ALL = {**TARGETS, **UNSHIPPED}
+
+
 def rules_for(version):
     return RULES.get(version, [])
 
@@ -147,7 +157,7 @@ def variant_dirs_for(version):
     Oldest first means a newer directory's copy of a file wins, which is what inheriting from
     the previous version means in practice.
     """
-    order = list(TARGETS)
+    order = list(ALL)
     upto = order[:order.index(version) + 1]
     return [VARIANTS / name for name in upto if (VARIANTS / name).is_dir()]
 
@@ -290,11 +300,11 @@ def main():
     built = {}
 
     for version in wanted:
-        if version not in TARGETS:
-            print(f"  {version}: not a version we ship")
+        if version not in ALL:
+            print(f"  {version}: not a version we know about")
             continue
 
-        jar = build(version, TARGETS[version], errors_only)
+        jar = build(version, ALL[version], errors_only)
 
         if jar:
             built[version] = jar.name

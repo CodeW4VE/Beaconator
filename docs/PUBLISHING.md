@@ -52,8 +52,34 @@ it sorts itself out on upload.
 
 Body: paste `README.md`. It is written to read as a mod page already.
 
-Game versions for the current build: **1.21 and 1.21.1 only**. See `docs/VERSIONS.md` for why
-nothing above that is listed.
+Game versions for the current build: **1.21 through 1.21.8**. See `docs/VERSIONS.md` for how each
+one is built and `docs/PORT-1.21.9-PLUS.md` for why the list stops there.
+
+### The versions the workflow does not upload
+
+The release workflow builds and uploads **one** jar, the 1.21 one. Every other version comes from
+`tools/multiversion.py`, which the workflow does not run, so those jars go up by hand after the
+tag:
+
+```sh
+python3 tools/multiversion.py
+gh release upload v1.1.0 build/multiversion/beaconator-1.1.0+1.21.[2-8].jar
+```
+
+and then one Modrinth version per jar. Modrinth wants `environment` declared **in the POST that
+creates the version**: setting it afterwards with a PATCH returns 204 and takes a long time to
+show up, which reads as a failure and is not one. Ours is `client_only_server_optional`.
+
+```sh
+curl -H "Authorization: $TOKEN" -X POST https://api.modrinth.com/v3/version \
+  -F 'data={"project_id":"1LmFuBOw","version_number":"1.1.0+1.21.8","game_versions":["1.21.8"],
+             "loaders":["fabric"],"version_type":"release","file_parts":["file"],
+             "primary_file":"file","environment":"client_only_server_optional","dependencies":[]}' \
+  -F "file=@build/multiversion/beaconator-1.1.0+1.21.8.jar"
+```
+
+1.21.1 gets no version of its own: it runs the 1.21 jar, and that jar's `fabric.mod.json` accepts
+the range, so both are listed on the one upload.
 
 ### Every release after that
 

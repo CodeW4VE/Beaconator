@@ -1,84 +1,84 @@
 # Moving to newer Minecraft versions
 
-Beaconator targets **1.21**. This is what it actually costs to go further, measured rather than
-guessed: the mod was compiled unchanged against each version and the compiler errors counted.
+Beaconator ships **1.21 through 1.21.8**, one jar per version, all built from this one source
+tree. This is what each jump actually cost, measured rather than guessed: the mod was compiled
+against every version and the compiler errors read one by one.
 
-| Minecraft | Compile errors | Status |
+| Minecraft | Compile errors, unported | Status |
 | --- | --- | --- |
 | 1.21 | 0 | the target |
 | 1.21.1 | **0** | same jar |
 | 1.21.2 | 9 | **shipped**, six substitutions |
 | 1.21.3 | 9 | **shipped** |
 | 1.21.4 | 10 | **shipped**, one more substitution |
-| 1.21.5 | 88 | the render backend has to be rewritten |
-| 1.21.11 | 186 | the above plus the NBT and screen API churn |
-| 26.2 | does not even configure | needs Java 25, a newer Loom, and official Mojang mappings that Loom 1.17 cannot resolve for it |
+| 1.21.5 | 36 | **shipped**, the drawing layer rewritten |
+| 1.21.6 | 8 on top of 1.21.5 | **shipped**, the drawing layer rewritten again |
+| 1.21.7 | same as 1.21.6 | **shipped**, free |
+| 1.21.8 | same as 1.21.6 | **shipped**, free |
+| 1.21.9 | 36 | Fabric API has no world render event any more. See [PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md) |
+| 1.21.10 | 36 | as above |
+| 1.21.11 | 70 | as above, plus more screen churn |
 
 ## How the shipped versions are built
 
-`tools/multiversion.py` copies the source, applies that version's substitutions and compiles.
-The compiler checks the result against the real mappings, which is the point: these builds are
-not play tested, so a method that does not exist has to fail the build rather than crash someone's
-game.
+`tools/multiversion.py` copies the source, applies that version's changes and compiles. The
+compiler checks the result against the real mappings, which is the point: these builds are not
+play tested, so a method that does not exist has to fail the build rather than crash someone's
+game. The model tests run on every one of them, all 56, because they do not need Minecraft.
 
-What actually differs between 1.21 and 1.21.4, all of it renames:
+There are two mechanisms, because two kinds of thing happened.
 
-| Was | Became |
-| --- | --- |
-| `Level.getMinBuildHeight` / `getMaxBuildHeight` | `getMinY` / `getMaxY` |
-| `NativeImage.setPixelRGBA` (ABGR) | `setPixel` (ARGB, so the bytes get swapped) |
-| `BuiltInRegistries.BLOCK.get` | returns an `Optional` of a holder |
-| `GameRenderer.getPositionColorShader` | `CoreShaders.POSITION_COLOR` |
-| `GuiGraphics.blit(ResourceLocation, ...)` | takes a render type, and the uv floats moved ahead of the size |
-| `TextureManager.register(String, ...)` | takes a `ResourceLocation` and returns void (1.21.4) |
+**Substitutions** for everything that was only renamed. A table of plain string pairs in the
+script, applied to the copied tree. This covers all of 1.21 to 1.21.4 and most of 1.21.5.
 
-`Options.setKey(mapping, key)` also went away, but `KeyMapping.setKey(key)` exists in every
-version, so the main source uses that and needs no substitution.
+**Variant files** for the things a rename cannot express, in `variants/<version>/`, copied over
+the tree. A variant directory applies to its version and everything above it until some newer
+one ships its own copy of the same file. A file earns a place here only when it could not be a
+substitution, so there is still one copy of the logic. Two files qualify today:
 
-## Where the walls are
+| File | Where | Why |
+| --- | --- | --- |
+| `render/Pipelines.java` | `variants/1.21.5`, `variants/1.21.6` | new file: declares the pipelines and submits meshes |
+| `render/PerimeterRenderer.java` | `variants/1.21.5` | the state switches around each draw are gone |
 
-**1.21.2** moves `Level.getMinBuildHeight()` / `getMaxBuildHeight()` and `KeyMapping` handling.
-Mechanical, one line each.
+## What changed, by version
 
-**1.21.5** is the real wall. The immediate mode rendering this mod draws everything with is gone:
+**1.21.2** moved `Level.getMinBuildHeight()` / `getMaxBuildHeight()` to `getMinY` / `getMaxY`,
+`NativeImage.setPixelRGBA` (ABGR) to `setPixel` (ARGB, so the bytes get swapped), made
+`BuiltInRegistries.BLOCK.get` return an `Optional` of a holder, moved the core shaders out of
+`GameRenderer`, and changed `GuiGraphics.blit` to take a render type with the uv floats ahead of
+the size. One line each.
 
-- `RenderSystem.setShader(GameRenderer::getPositionColorShader)`
-- `BufferUploader.drawWithShader(mesh)`
-- `RenderSystem.depthMask` / `disableDepthTest` / `lineWidth` and friends
+**1.21.4** made `TextureManager.register` take a `ResourceLocation` and return void.
 
-They are replaced by the `RenderPipeline` system. `PerimeterRenderer` and `MapTile` have to be
-rewritten against it: not hard, but it is a rewrite of the drawing layer rather than a patch.
+**1.21.5** is where it stopped being renames. Immediate mode drawing is gone: no
+`BufferUploader.drawWithShader`, no `RenderSystem.setShader`, no `depthMask` / `enableBlend` /
+`enableCull` / `disableDepthTest`. Blending, culling and depth are baked into a `RenderPipeline`
+declared up front. That is why "see through terrain" became two pipelines picked per draw
+instead of a switch flipped before one, and why there are four and not two.
 
-**1.21.5 onwards** also turns the NBT getters into `Optional`, which is where the 18
-`Optional<Integer> cannot be converted to int` and 12 `Optional<CompoundTag>` errors in
-`LitematicIO` come from. Mechanical but touches every read.
+The rest of 1.21.5 was renaming after all. Every NBT getter returns an `Optional` now, but each
+one gained an `OrEmpty` or `OrElse` twin that returns exactly what the old getter returned for a
+missing key: an empty compound, a zero, an empty string. So `LitematicIO` needed no decisions,
+just the twins. `Inventory.selected` stopped being a public field and `DynamicTexture` wants a
+label supplier.
 
-**26.x** is a separate project. Java 25, new build toolchain, and everything above.
+**1.21.6** moved the shader's matrices out of loose uniforms and into a uniform buffer handed to
+the render pass per draw, addressed the render target by texture view rather than texture, and
+changed `drawIndexed` to take four arguments. `Pipelines` is a variant again for that; nothing
+else in the mod noticed. GUI draws take the pipeline itself rather than a function returning a
+render type for it.
+
+**1.21.7** and **1.21.8** needed nothing at all.
+
+**1.21.9** is a wall of a different kind, and it is not about drawing: Fabric API removed
+`WorldRenderEvents` outright, so there is nothing to hook. See
+[PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md).
 
 ## What does not break
 
 `model/` (the grid maths, the pyramid calculator, the coverage boxes, the litematic bit
-packing) produced **zero errors on every version tested**. It has no Minecraft imports and its
-50 tests run without the game. That is roughly half the mod, and it ports for free.
-
-The damage by file, going to 1.21.11:
-
-| File | Errors |
-| --- | --- |
-| `client/gui/BeaconatorScreen.java` | 52 |
-| `io/LitematicIO.java` | 40 |
-| `render/PerimeterRenderer.java` | 38 |
-| `client/map/MapTile.java` | 14 |
-| `client/Keys.java` | 10 |
-| everything else | under 10 each |
-| `model/**` | 0 |
-
-## Recommendation
-
-Ship 1.21 (and list 1.21.1, which is the same jar), because that is what is tested and what the
-server this was built for runs. Do not chase the latest version until there is a reason to: a
-port to 1.21.5+ is a render rewrite, and the mod would then need testing all over again on a
-version nobody here plays.
-
-If it ever has to live on several versions at once, the tool for that is
-[Stonecutter](https://stonecutter.kikugie.dev/), not a branch per version.
+packing) has produced **zero errors on every version tested**, up to and including 26.2. It has
+no Minecraft imports and its tests run without the game. That is roughly half the mod, and the
+half with the actual thinking in it. Every port so far has been a shell around code that already
+works.

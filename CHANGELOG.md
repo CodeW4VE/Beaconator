@@ -2,9 +2,18 @@
 
 ## 1.1.0
 
-Ships for **1.21.2, 1.21.3 and 1.21.4** as well, built from the same source: between 1.21 and
-1.21.4 vanilla only renamed things, and `tools/multiversion.py` compiles a jar against each one.
-The compiler does the checking, which matters because those builds are not play tested.
+Ships for **1.21 through 1.21.8**, one jar per version, all from the same source.
+
+Up to 1.21.4 vanilla had only renamed things, and `tools/multiversion.py` compiles a jar against
+each version with a substitution table. 1.21.5 is where that stopped being enough: immediate mode
+drawing is gone and blending, culling and depth are baked into pipeline objects declared up
+front, so the drawing layer is written against that instead. 1.21.6 changed how a shader is fed
+and needed it again. 1.21.7 and 1.21.8 came free.
+
+The compiler does the checking, which matters because these builds are not play tested: a method
+that does not exist fails the build rather than crashing someone's game. The 56 model tests run
+on every version too. What no build can check is whether the rewritten drawing layer actually
+draws, so 1.21.5 and up want a pair of eyes in game before they are trusted.
 
 - **Excluded nodes change colour as you build them.** They get a pyramid, a beacon and a marker
   like everything else, but they were flat grey whatever their state, so there was no telling a

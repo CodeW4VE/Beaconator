@@ -1,5 +1,12 @@
 # Porting past 1.21.4: what we are walking into
 
+> **Done, and kept for the record.** 1.21.5 through 1.21.8 ship. The estimate below was wrong in
+> a useful direction: this predicted a day of work and a rewritten renderer, and it was about two
+> hours and two files, because the NBT change turned out to be a rename with a well behaved twin
+> for every getter rather than a decision per field. The current briefing is
+> [PORT-1.21.9-PLUS.md](PORT-1.21.9-PLUS.md); what actually changed per version is in
+> [VERSIONS.md](VERSIONS.md).
+
 We ship **1.21 through 1.21.4** today. Going further is not more of the same, and this is the
 briefing for the day we sit down to do it, written while the measurements are fresh.
 
