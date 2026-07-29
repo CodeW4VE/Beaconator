@@ -13,6 +13,7 @@ import xyz.w4ve.beaconator.model.GridNode;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.client.scan.ScanCache;
 
 /**
  * Pan, zoom and the overlay drawn on top of the terrain: every node's coverage as a rectangle,
@@ -257,7 +258,7 @@ public final class MapView {
 		for (GridNode node : plan.nodes()) {
 			NodeStatus status = plan.statusAt(node.key());
 			boolean isHovered = node.key().equals(hovered);
-			int color = colorFor(status, isHovered, config);
+			int color = colorFor(status, isHovered, config, node.key());
 			CoverageBox box = plan.coverageOf(node);
 
 			int left = (int) Math.round(worldToScreenX(box.renderMinX(), x, width));
@@ -345,9 +346,26 @@ public final class MapView {
 		graphics.fill(px - 2, pz - 2, px + 2, pz + 2, 0xFFFF4444);
 	}
 
-	private static int colorFor(NodeStatus status, boolean hovered, BeaconatorConfig config) {
+	private static int colorFor(NodeStatus status, boolean hovered, BeaconatorConfig config,
+			NodeKey key) {
 		if (hovered) {
 			return config.colorHover;
+		}
+
+		// The same three way read the world render uses, excluded nodes included: they get built
+		// too, so flat grey left no way to see which ones are done.
+		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED) {
+			boolean excluded = status == NodeStatus.EXCLUDED;
+
+			if (ScanCache.finished(key)) {
+				return excluded ? blend(config.colorExcluded, config.colorPlaced, 0.6f)
+						: config.colorPlaced;
+			}
+
+			if (ScanCache.partial(key)) {
+				return excluded ? blend(config.colorExcluded, config.colorPartial, 0.6f)
+						: config.colorPartial;
+			}
 		}
 
 		return switch (status) {
@@ -356,6 +374,14 @@ public final class MapView {
 			case EXCLUDED -> config.colorExcluded;
 			case REMOVED -> config.colorRemoved;
 		};
+	}
+
+	private static int blend(int from, int to, float amount) {
+		float clamped = Math.clamp(amount, 0.0f, 1.0f);
+		int r = Math.round((from >> 16 & 0xFF) + ((to >> 16 & 0xFF) - (from >> 16 & 0xFF)) * clamped);
+		int g = Math.round((from >> 8 & 0xFF) + ((to >> 8 & 0xFF) - (from >> 8 & 0xFF)) * clamped);
+		int b = Math.round((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * clamped);
+		return 0xFF000000 | r << 16 | g << 8 | b;
 	}
 
 	/** Blocks per screen pixel, for the scale readout. */

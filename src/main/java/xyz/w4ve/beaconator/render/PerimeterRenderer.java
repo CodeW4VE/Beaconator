@@ -181,20 +181,19 @@ public final class PerimeterRenderer {
 			}
 
 			// Same three way read as the boxes, and this is where it earns its keep: a yellow
-			// beam across the site is a node that looks built and is one beacon short.
-			int color = switch (status) {
-				case EXCLUDED -> config.colorBeamExcluded;
-				case PLACED, PENDING -> {
-					if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(node.key())) {
-						yield config.colorBeamPlaced;
-					}
+			// beam across the site is a node that looks built and is one beacon short. Excluded
+			// nodes included, muted towards grey, because those get built as well.
+			boolean excluded = status == NodeStatus.EXCLUDED;
+			int base = excluded ? config.colorBeamExcluded : config.colorBeamPending;
+			int color;
 
-					yield xyz.w4ve.beaconator.client.scan.ScanCache.partial(node.key())
-							? config.colorBeamPartial
-							: status == NodeStatus.PLACED ? config.colorBeamPlaced : config.colorBeamPending;
-				}
-				default -> config.colorBeamPending;
-			};
+			if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(node.key())) {
+				color = excluded ? blend(base, config.colorBeamPlaced, 0.6f) : config.colorBeamPlaced;
+			} else if (xyz.w4ve.beaconator.client.scan.ScanCache.partial(node.key())) {
+				color = excluded ? blend(base, config.colorBeamPartial, 0.6f) : config.colorBeamPartial;
+			} else {
+				color = status == NodeStatus.PLACED ? config.colorBeamPlaced : base;
+			}
 
 			float r = ShapeRenderer.red(color);
 			float g = ShapeRenderer.green(color);
@@ -492,16 +491,21 @@ public final class PerimeterRenderer {
 
 		// Three states you can read at a glance instead of a gradient you have to interpret:
 		// untouched, started, and actually finished.
-		// Excluded nodes keep their own colour: grey already says "not one of ours", and that
-		// matters more than how far along it is.
-		if (config.showProgressColor && key != null
-				&& (status == NodeStatus.PENDING || status == NodeStatus.PLACED)) {
+		// Excluded nodes get built too, pyramid and marker and all, so they need the same three
+		// way read. Muted towards their own grey, so they still say "not one of ours" at a
+		// glance: leaving them flat grey meant there was no way to tell a finished one from an
+		// untouched one, which is half the perimeter on a big site.
+		if (config.showProgressColor && key != null && status != NodeStatus.REMOVED) {
+			boolean excluded = status == NodeStatus.EXCLUDED;
+
 			if (xyz.w4ve.beaconator.client.scan.ScanCache.finished(key)) {
-				return config.colorPlaced;
+				return excluded ? blend(config.colorExcluded, config.colorPlaced, 0.6f)
+						: config.colorPlaced;
 			}
 
 			if (xyz.w4ve.beaconator.client.scan.ScanCache.partial(key)) {
-				return config.colorPartial;
+				return excluded ? blend(config.colorExcluded, config.colorPartial, 0.6f)
+						: config.colorPartial;
 			}
 		}
 
