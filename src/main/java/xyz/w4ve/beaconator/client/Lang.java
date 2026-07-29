@@ -123,6 +123,8 @@ public final class Lang {
 		put("plan.imported_loose", "Imported, but schematics carry no coordinates: it landed at your feet",
 				"Importado, pero los litematics no llevan coordenadas: quedó a tus pies");
 		put("plan.import_failed", "Could not read it: %s", "No se pudo leer: %s");
+		put("plan.exporting", "Writing %s.litematic, this takes a moment...",
+				"Escribiendo %s.litematic, esto tarda un poco...");
 		put("plan.exported", "Wrote schematics/%s.litematic", "Escribí schematics/%s.litematic");
 		put("plan.export_failed", "Could not write it: %s", "No se pudo escribir: %s");
 

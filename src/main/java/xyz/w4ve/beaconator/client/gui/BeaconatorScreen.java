@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
@@ -1293,6 +1294,14 @@ public class BeaconatorScreen extends Screen {
 				}));
 	}
 
+	/**
+	 * Writes the schematic on a worker thread.
+	 *
+	 * <p>A schematic covers the plan's whole bounding box, and a perimeter is enormous: 17x17
+	 * nodes at 101 spacing is 1616 x 5 x 1616, thirteen million block slots. Doing that on the
+	 * render thread froze the game long enough for the server to drop the connection, which is a
+	 * memorable way to find out that a button is doing too much work.
+	 */
 	private void exportSchematic() {
 		if (!PlanManager.hasPlan()) {
 			return;
@@ -1300,15 +1309,20 @@ public class BeaconatorScreen extends Screen {
 
 		PerimeterPlan plan = PlanManager.plan();
 		Minecraft mc = Minecraft.getInstance();
+		String author = mc.player == null ? "" : mc.player.getGameProfile().getName();
+		String name = plan.name();
+		setStatus(Lang.t("plan.exporting", name), DIM_COLOR);
 
-		try {
-			LitematicIO.write(SchematicFiles.resolve(plan.name()), plan,
-					mc.player == null ? "" : mc.player.getGameProfile().getName());
-			setStatus(Lang.t("plan.exported", plan.name()), OK_COLOR);
-		} catch (IOException | RuntimeException e) {
-			BeaconatorClient.LOGGER.warn("Export failed", e);
-			setStatus(Lang.t("plan.export_failed", String.valueOf(e.getMessage())), WARN_COLOR);
-		}
+		CompletableFuture.runAsync(() -> {
+			try {
+				LitematicIO.write(SchematicFiles.resolve(name), plan, author);
+				mc.execute(() -> setStatus(Lang.t("plan.exported", name), OK_COLOR));
+			} catch (IOException | RuntimeException e) {
+				BeaconatorClient.LOGGER.warn("Export failed", e);
+				mc.execute(() -> setStatus(
+						Lang.t("plan.export_failed", String.valueOf(e.getMessage())), WARN_COLOR));
+			}
+		});
 	}
 
 	// ----------------------------------------------------------------- helpers
