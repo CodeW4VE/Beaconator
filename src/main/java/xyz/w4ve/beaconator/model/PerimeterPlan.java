@@ -37,6 +37,8 @@ public final class PerimeterPlan {
 	private String pyramidBlock = DEFAULT_PYRAMID_BLOCK;
 	private String markerBlock = DEFAULT_MARKER_BLOCK;
 	private boolean placeMarker = true;
+	/** Block capping the beacons of nodes that ARE part of the perimeter. Empty for none. */
+	private String innerCapBlock = "";
 
 	private final Map<NodeKey, NodeData> overrides = new HashMap<>();
 
@@ -180,6 +182,18 @@ public final class PerimeterPlan {
 
 	public void setMarkerBlock(String markerBlock) {
 		this.markerBlock = markerBlock;
+	}
+
+	public String innerCapBlock() {
+		return innerCapBlock;
+	}
+
+	/**
+	 * A block on top of the beacons of the nodes that count, the way excluded nodes get their
+	 * marker. Some crews cap theirs in a colour so a finished node reads from the air.
+	 */
+	public void setInnerCapBlock(String block) {
+		this.innerCapBlock = block == null ? "" : block.trim();
 	}
 
 	public boolean placeMarker() {
@@ -364,9 +378,13 @@ public final class PerimeterPlan {
 			sink.accept(pos[0], pos[1], pos[2], BEACON_BLOCK);
 		}
 
-		if (status == NodeStatus.EXCLUDED && placeMarker) {
+		String cap = status == NodeStatus.EXCLUDED && placeMarker ? markerBlock
+				: status != NodeStatus.EXCLUDED && !innerCapBlock.isEmpty() ? innerCapBlock
+				: null;
+
+		if (cap != null) {
 			for (int[] pos : beaconPositionsOf(node)) {
-				sink.accept(pos[0], pos[1] + 1, pos[2], markerBlock);
+				sink.accept(pos[0], pos[1] + 1, pos[2], cap);
 			}
 		}
 	}
@@ -395,16 +413,30 @@ public final class PerimeterPlan {
 		int beacons = beaconsAt(key);
 		int extra = beacons - 1;
 
-		if (y == node.y() || (y == node.y() + 1 && status == NodeStatus.EXCLUDED && placeMarker)) {
-			boolean onRow = rowAxis == RowAxis.X
-					? z == node.z() && x >= node.x() && x <= node.x() + extra
-					: x == node.x() && z >= node.z() && z <= node.z() + extra;
+		boolean capped = y == node.y() + 1 && (status == NodeStatus.EXCLUDED
+				? placeMarker
+				: !innerCapBlock.isEmpty());
 
-			if (!onRow) {
+		if (y == node.y() || capped) {
+			boolean onGroup = false;
+
+			for (int[] position : PyramidCalculator.beaconPositions(node.x(), node.y(), node.z(),
+					beacons, rowAxis)) {
+				if (position[0] == x && position[2] == z) {
+					onGroup = true;
+					break;
+				}
+			}
+
+			if (!onGroup) {
 				return null;
 			}
 
-			return y == node.y() ? BEACON_BLOCK : markerBlock;
+			if (y == node.y()) {
+				return BEACON_BLOCK;
+			}
+
+			return status == NodeStatus.EXCLUDED ? markerBlock : innerCapBlock;
 		}
 
 		int depth = node.y() - y;
@@ -413,10 +445,11 @@ public final class PerimeterPlan {
 			return null;
 		}
 
-		int minX = node.x() - depth;
-		int maxX = node.x() + depth + (rowAxis == RowAxis.X ? extra : 0);
-		int minZ = node.z() - depth;
-		int maxZ = node.z() + depth + (rowAxis == RowAxis.Z ? extra : 0);
+		int[] off = PyramidCalculator.groupOffsets(beacons, level, rowAxis);
+		int minX = node.x() - depth + off[0];
+		int maxX = node.x() + depth + off[1];
+		int minZ = node.z() - depth + off[2];
+		int maxZ = node.z() + depth + off[3];
 
 		if (x < minX || x > maxX || z < minZ || z > maxZ) {
 			return null;
@@ -442,6 +475,8 @@ public final class PerimeterPlan {
 
 			if (status == NodeStatus.EXCLUDED && placeMarker) {
 				tally.add(markerBlock, beacons);
+			} else if (status != NodeStatus.EXCLUDED && !innerCapBlock.isEmpty()) {
+				tally.add(innerCapBlock, beacons);
 			}
 		}
 
@@ -463,6 +498,8 @@ public final class PerimeterPlan {
 
 		if (status == NodeStatus.EXCLUDED && placeMarker) {
 			tally.add(markerBlock, beacons);
+		} else if (status != NodeStatus.EXCLUDED && !innerCapBlock.isEmpty()) {
+			tally.add(innerCapBlock, beacons);
 		}
 
 		return tally;
@@ -520,11 +557,11 @@ public final class PerimeterPlan {
 
 		for (GridNode node : buildNodes()) {
 			int beacons = beaconsAt(node.key());
-			int extra = beacons - 1;
-			int baseMinX = node.x() - level;
-			int baseMaxX = node.x() + level + (rowAxis == RowAxis.X ? extra : 0);
-			int baseMinZ = node.z() - level;
-			int baseMaxZ = node.z() + level + (rowAxis == RowAxis.Z ? extra : 0);
+			int[] off = PyramidCalculator.groupOffsets(beacons, level, rowAxis);
+			int baseMinX = node.x() - level + off[0];
+			int baseMaxX = node.x() + level + off[1];
+			int baseMinZ = node.z() - level + off[2];
+			int baseMaxZ = node.z() + level + off[3];
 			int top = node.y() + (statusAt(node.key()) == NodeStatus.EXCLUDED && placeMarker ? 1 : 0);
 
 			minX = minX == null ? baseMinX : Math.min(minX, baseMinX);

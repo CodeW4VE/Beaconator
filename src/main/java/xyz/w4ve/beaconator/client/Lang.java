@@ -137,7 +137,7 @@ public final class Lang {
 		put("grid.beacons_one", "%d beacon per node", "%d beacon por nodo");
 		put("grid.beacons_many", "%d beacons per node", "%d beacons por nodo");
 		put("grid.level", "Pyramid level %d (%d blocks)", "Pirámide nivel %d (%d bloques)");
-		put("grid.axis", "Rows along %s", "Filas sobre %s");
+		put("grid.axis", "Rotation %s", "Rotación %s");
 		put("grid.auto_spacing", "Spacing follows level", "Separación según el nivel");
 		put("grid.summary", "%d x %d = %d nodes, %s blocks", "%d x %d = %d nodos, %s bloques");
 		put("grid.per_pyramid", "%d blocks per pyramid, base %d x %d",
@@ -154,6 +154,8 @@ public final class Lang {
 		put("blocks.marker", "Marker block for excluded nodes", "Bloque marcador de los nodos excluidos");
 		put("blocks.from_hand", "From hand", "El de la mano");
 		put("blocks.place_marker", "Place marker block", "Poner bloque marcador");
+		put("blocks.inner_cap", "Cap the rest too", "Rematar también los demás");
+		put("blocks.inner_cap_is", "Nodes inside get %s on top", "Los nodos de dentro llevan %s encima");
 		put("blocks.hold_first", "Hold a block first", "Agarrá un bloque primero");
 		put("blocks.unknown", "Unknown block: %s", "Bloque desconocido: %s");
 		put("blocks.using", "Using %s", "Usando %s");
@@ -196,6 +198,12 @@ public final class Lang {
 		put("display.layers", "Layers: %s", "Capas: %s");
 		put("display.layer_up", "Layer up", "Capa arriba");
 		put("display.layer_down", "Layer down", "Capa abajo");
+		put("colour.pending", "To do", "Por hacer");
+		put("colour.partial", "Half built", "A medias");
+		put("colour.placed", "Done", "Hecho");
+		put("colour.excluded", "Excluded", "Excluido");
+		put("colour.removed", "Dropped", "Eliminado");
+		put("colour.beam", "Beam", "Haz");
 		put("display.language", "Language", "Idioma");
 		put("display.follow_litematica", "Follow Litematica", "Seguir Litematica");
 

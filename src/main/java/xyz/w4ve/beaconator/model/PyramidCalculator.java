@@ -118,21 +118,37 @@ public final class PyramidCalculator {
 		checkLevel(level);
 		checkBeacons(beacons);
 
-		Footprint footprint = footprint(beacons, level);
-		int extraAlong = footprint.along() - 1;
-		int extraAcross = footprint.across() - 1;
-		int extraX = axis == RowAxis.X ? extraAlong : extraAcross;
-		int extraZ = axis == RowAxis.X ? extraAcross : extraAlong;
-
+		int[] off = groupOffsets(beacons, level, axis);
 		List<PyramidLayer> layers = new ArrayList<>(level);
 
 		for (int depth = 1; depth <= level; depth++) {
 			layers.add(new PyramidLayer(depth, y - depth,
-					x - depth, x + depth + extraX,
-					z - depth, z + depth + extraZ));
+					x - depth + off[0], x + depth + off[1],
+					z - depth + off[2], z + depth + off[3]));
 		}
 
 		return layers;
+	}
+
+	/**
+	 * How far the beacons of a node reach from its corner, as
+	 * {@code {minX, maxX, minZ, maxZ}} offsets.
+	 *
+	 * <p>The one place this shape is worked out. The pyramid, the coverage volume and the block
+	 * list all have to agree on where the beacons are, and three copies of "add the extra towards
+	 * positive X" is how they stop agreeing.
+	 */
+	public static int[] groupOffsets(int beacons, int level, RowAxis axis) {
+		Footprint footprint = footprint(beacons, level);
+		// The group grows the way the rotation points, so a negative one hangs off the other side.
+		int reach = axis.step() * (footprint.along() - 1);
+		int alongMin = Math.min(0, reach);
+		int alongMax = Math.max(0, reach);
+		int acrossMax = footprint.across() - 1;
+
+		return axis.isX()
+				? new int[] {alongMin, alongMax, 0, acrossMax}
+				: new int[] {0, acrossMax, alongMin, alongMax};
 	}
 
 	/**
@@ -149,8 +165,9 @@ public final class PyramidCalculator {
 
 		for (int across = 0; across < footprint.across() && positions.size() < beacons; across++) {
 			for (int along = 0; along < footprint.along() && positions.size() < beacons; along++) {
-				int bx = x + (axis == RowAxis.X ? along : across);
-				int bz = z + (axis == RowAxis.X ? across : along);
+				int reach = axis.step() * along;
+				int bx = x + (axis.isX() ? reach : across);
+				int bz = z + (axis.isX() ? across : reach);
 				positions.add(new int[] {bx, y, bz});
 			}
 		}

@@ -78,6 +78,12 @@ public class BeaconatorConfig {
 	/** Dark grey rather than near black: the old value was invisible against stone. */
 	public int colorExcluded = 0xFF6C7078;
 	public int colorHover = 0xFFFFC24A;
+	/**
+	 * Dropped nodes, kept apart from excluded ones. They used to share a colour, which left no
+	 * way to make "outside the perimeter" visible without also lighting up the two hundred nodes
+	 * you deleted.
+	 */
+	public int colorRemoved = 0xFF4A4E55;
 	/** Beam colours: red for what is missing, green for what is done, grey for excluded. */
 	public int colorBeamPending = 0xFFFF3B30;
 	public int colorBeamPlaced = 0xFF57E36B;

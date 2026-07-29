@@ -129,6 +129,7 @@ public final class PlanStore {
 		};
 		dto.pyramidBlock = plan.pyramidBlock();
 		dto.markerBlock = plan.markerBlock();
+		dto.innerCapBlock = plan.innerCapBlock();
 		dto.placeMarker = plan.placeMarker();
 		dto.nodes = new LinkedHashMap<>();
 
@@ -170,6 +171,10 @@ public final class PlanStore {
 			plan.setPyramidBlock(dto.pyramidBlock);
 		}
 
+		if (dto.innerCapBlock != null) {
+			plan.setInnerCapBlock(dto.innerCapBlock);
+		}
+
 		if (dto.markerBlock != null) {
 			plan.setMarkerBlock(dto.markerBlock);
 		}
@@ -205,6 +210,7 @@ public final class PlanStore {
 		int[] extents;
 		String pyramidBlock;
 		String markerBlock;
+		String innerCapBlock;
 		boolean placeMarker;
 		Map<String, NodeDto> nodes;
 	}

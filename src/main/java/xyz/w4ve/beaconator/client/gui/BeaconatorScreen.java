@@ -527,12 +527,17 @@ public class BeaconatorScreen extends Screen {
 					touch();
 				}));
 
+		// All four quarter turns, so the beacons of a node can hang off whichever side of it
+		// suits the perimeter, not only east and south.
 		addRenderableWidget(CycleButton.<RowAxis>builder(
-						value -> Component.literal(Lang.t("grid.axis", value.name())))
-				.withValues(RowAxis.X, RowAxis.Z)
+						value -> Component.literal(fit(Lang.t("grid.axis",
+								value.degrees() + "\u00b0 " + directionName(value)), 142)))
+				.withValues(RowAxis.values())
 				.withInitialValue(plan.rowAxis())
+				.displayOnlyValue()
 				.create(left, cyclesY + 24, 150, 20, Component.empty(), (button, value) -> {
 					plan.setRowAxis(value);
+					ScanCache.clear();
 					touch();
 				}));
 
@@ -631,12 +636,37 @@ public class BeaconatorScreen extends Screen {
 					touch();
 				}));
 
-		label(width / 2, markerY + 82, () -> Lang.t("blocks.explain1"), () -> DIM_COLOR, true);
-		label(width / 2, markerY + 94, () -> Lang.t("blocks.explain2"), () -> DIM_COLOR, true);
+		// The same idea for the nodes that stay in: a colour on top so a finished one reads from
+		// the air. Off by default, because it is a block per beacon across the whole perimeter.
+		addRenderableWidget(CycleButton.onOffBuilder(!plan.innerCapBlock().isEmpty())
+				.create(right, markerY + 52, 150, 20, Lang.c("blocks.inner_cap"), (button, value) -> {
+					plan.setInnerCapBlock(value
+							? (markerBox != null && !markerBox.getValue().isBlank()
+									? markerBox.getValue().trim() : "minecraft:white_stained_glass")
+							: "");
+					touch();
+					rebuildWidgets();
+				}));
+
+		if (!plan.innerCapBlock().isEmpty()) {
+			label(width / 2, markerY + 78, () -> Lang.t("blocks.inner_cap_is",
+					shortName(plan.innerCapBlock())), () -> DIM_COLOR, true);
+			blockRow(left, markerY + 88, MARKER_BLOCKS, false, plan, true);
+			label(width / 2, markerY + 116, () -> Lang.t("blocks.explain1"), () -> DIM_COLOR, true);
+			label(width / 2, markerY + 128, () -> Lang.t("blocks.explain2"), () -> DIM_COLOR, true);
+		} else {
+			label(width / 2, markerY + 82, () -> Lang.t("blocks.explain1"), () -> DIM_COLOR, true);
+			label(width / 2, markerY + 94, () -> Lang.t("blocks.explain2"), () -> DIM_COLOR, true);
+		}
 	}
 
 	/** A row of one click block choices. Beats typing ids when there are five of them. */
 	private void blockRow(int x, int y, String[] blocks, boolean pyramid, PerimeterPlan plan) {
+		blockRow(x, y, blocks, pyramid, plan, false);
+	}
+
+	private void blockRow(int x, int y, String[] blocks, boolean pyramid, PerimeterPlan plan,
+			boolean innerCap) {
 		int buttonWidth = 60;
 
 		for (int index = 0; index < blocks.length; index++) {
@@ -647,11 +677,14 @@ public class BeaconatorScreen extends Screen {
 				continue;
 			}
 
-			boolean selected = id.equals(pyramid ? plan.pyramidBlock() : plan.markerBlock());
+			boolean selected = id.equals(innerCap ? plan.innerCapBlock()
+					: pyramid ? plan.pyramidBlock() : plan.markerBlock());
 			Component label = Component.literal((selected ? "> " : "") + shortLabel(id));
 
 			addRenderableWidget(Button.builder(label, button -> {
-				if (pyramid) {
+				if (innerCap) {
+					plan.setInnerCapBlock(id);
+				} else if (pyramid) {
 					plan.setPyramidBlock(id);
 					pyramidBox.setValue(id);
 				} else {
@@ -1070,7 +1103,22 @@ public class BeaconatorScreen extends Screen {
 					config.save();
 				}, 0, 16, 1);
 
-		int layerY = y + step * 8 + 12;
+		// Colours, on the tab where you are already looking at the thing they colour.
+		int colourY = y + step * 8 + 10;
+		colourButton(left, colourY, 150, "colour.pending", () -> config.colorPending,
+				value -> config.colorPending = value);
+		colourButton(right, colourY, 150, "colour.partial", () -> config.colorPartial,
+				value -> config.colorPartial = value);
+		colourButton(left, colourY + 22, 150, "colour.placed", () -> config.colorPlaced,
+				value -> config.colorPlaced = value);
+		colourButton(right, colourY + 22, 150, "colour.excluded", () -> config.colorExcluded,
+				value -> config.colorExcluded = value);
+		colourButton(left, colourY + 44, 150, "colour.removed", () -> config.colorRemoved,
+				value -> config.colorRemoved = value);
+		colourButton(right, colourY + 44, 150, "colour.beam", () -> config.colorBeamPending,
+				value -> config.colorBeamPending = value);
+
+		int layerY = colourY + 70;
 		addRenderableWidget(Button.builder(
 				Component.literal(Lang.t("display.layers", LayerFilter.describe())), button -> {
 					if (LayerFilter.active()) {
@@ -1311,6 +1359,54 @@ public class BeaconatorScreen extends Screen {
 	private void label(int x, int y, Supplier<String> text, Supplier<Integer> color,
 			boolean centered, boolean rightAligned) {
 		labels.add(new Label(x, y, text, color, centered, rightAligned));
+	}
+
+	/** "+X", "-Z" and friends, for the rotation button. */
+	private static String directionName(RowAxis axis) {
+		return switch (axis) {
+			case X -> "+X";
+			case Z -> "+Z";
+			case X_NEGATIVE -> "-X";
+			case Z_NEGATIVE -> "-Z";
+		};
+	}
+
+	/**
+	 * Colours you can actually tell apart on a map made of greens, greys and blues. Cycled with a
+	 * button rather than typed as hex: this is the sort of thing you fix while looking at it.
+	 */
+	private static final int[] PALETTE = {
+		0xFFFFFFFF, 0xFFFFD23F, 0xFFFF9838, 0xFFFF3B30, 0xFFFF5BD0, 0xFFB06BFF,
+		0xFF4C8DFF, 0xFF35D6D6, 0xFF57E36B, 0xFFB6FF5B, 0xFF9AA0A8, 0xFF4A4E55
+	};
+
+	/** One colour setting: press to move through the palette, right click to go back. */
+	private void colourButton(int x, int y, int labelWidth, String key, IntSupplier get, IntConsumer set) {
+		int current = get.getAsInt();
+		int index = 0;
+
+		for (int i = 0; i < PALETTE.length; i++) {
+			if (PALETTE[i] == current) {
+				index = i;
+				break;
+			}
+		}
+
+		int shown = index;
+		addRenderableWidget(new StepperWidget(x, y, labelWidth, 20, Lang.t(key),
+				() -> shown, value -> {
+					set.accept(PALETTE[Math.floorMod(value, PALETTE.length)]);
+					BeaconatorConfig.get().save();
+				}, -PALETTE.length * 8, PALETTE.length * 8, 1, this::rebuildWidgets) {
+			@Override
+			protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX,
+					int mouseY, float delta) {
+				super.renderWidget(graphics, mouseX, mouseY, delta);
+				// The swatch is the point: the number means nothing, the colour is the setting.
+				graphics.fill(getX() + width - 34, getY() + 4, getX() + width - 22, getY() + 16, 0xFF000000);
+				graphics.fill(getX() + width - 33, getY() + 5, getX() + width - 23, getY() + 15, get.getAsInt());
+			}
+		});
 	}
 
 	private String coverageNote() {

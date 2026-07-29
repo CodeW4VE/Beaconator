@@ -46,17 +46,31 @@ class CoverageBoxTest {
 	}
 
 	@Test
-	@DisplayName("A row of beacons widens the box along its axis only")
+	@DisplayName("A group of beacons widens the box by its footprint")
 	void rowBox() {
+		// Five beacons are a 2x3, so along Z that is 2 wide and 3 long, not a 1x5 row.
 		CoverageBox box = CoverageBox.forRow(0, 64, 0, 4, 5, RowAxis.Z);
 
-		assertEquals(101, box.width());
-		assertEquals(105, box.depth());
-		assertEquals(54, box.maxZ());
+		assertEquals(102, box.width());
+		assertEquals(103, box.depth());
+		assertEquals(52, box.maxZ());
 
 		CoverageBox alongX = CoverageBox.forRow(0, 64, 0, 4, 2, RowAxis.X);
 		assertEquals(102, alongX.width());
 		assertEquals(101, alongX.depth());
+	}
+
+	@Test
+	@DisplayName("A negative rotation hangs the group off the other side of the node")
+	void negativeRotation() {
+		CoverageBox forward = CoverageBox.forRow(0, 64, 0, 4, 2, RowAxis.X);
+		CoverageBox backward = CoverageBox.forRow(0, 64, 0, 4, 2, RowAxis.X_NEGATIVE);
+
+		assertEquals(forward.width(), backward.width());
+		// Same box, mirrored about the node: the second beacon is at -1 rather than +1.
+		assertEquals(51, forward.maxX());
+		assertEquals(-51, backward.minX());
+		assertEquals(50, backward.maxX());
 	}
 
 	@Test

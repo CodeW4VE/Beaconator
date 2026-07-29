@@ -44,89 +44,104 @@ Beaconator only does perimeters, so it can do them properly.
 
 ## Requirements
 
-- Minecraft 1.21
+- Minecraft **1.21** (1.21.1 works too)
 - Fabric Loader 0.16 or newer
-- Fabric API
+- [Fabric API](https://modrinth.com/mod/fabric-api)
 
-Client side only. Nothing is sent to the server and nothing needs installing on it.
+Drop the jar in `mods/` and start the game. That is the whole install.
 
-## Getting started
+Optional, and only if you want the whole team on one plan: put **the same jar** on the Fabric
+server as well. Without it the mod still works, you just keep your plan to yourself.
 
-Press **shift + B** to open the screen, or bind a key of your own. Everything lives there: the
-map, the grid settings, the blocks, the material list and the display options.
+## Never used it before? Start here
 
-- **New plan here** on the Plan tab starts one centred where you stand.
-- **Detect from world** reads a perimeter that is already built, straight out of the loaded
-  chunks, with real coordinates. This is the way to pick up an existing one.
+Beaconator is for one job: covering a large area in beacons, evenly, without holes, and knowing
+what you have left to build. If you are spawn proofing a perimeter, this is the mod.
 
-On the **Map** tab: drag to pan, scroll to zoom, left click drops a node, right click marks it
-as outside the perimeter. The terrain fills itself in as you fly over it and is kept between
-sessions.
+**1. Open the screen.** Press **Shift + B**. That is the whole interface: tabs across the top,
+Done at the bottom. `B` on its own turns edit mode on and off.
 
-Marking two hundred nodes one at a time is nobody's idea of fun, so drags do it in bulk:
+**2. Make a plan.** Stand roughly in the middle of the area and, on the **Plan** tab, press
+**New plan here**. If the perimeter is already half built, press **Detect from world** instead
+and the mod reads the beacons that are already there, with their real coordinates.
+
+**3. Shape it on the map.** The **Map** tab is the mod's own map, drawn one pixel per block from
+the chunks you have loaded, with your grid on top of it. Getting around it:
 
 | Input | What it does |
 |-------|--------------|
-| Shift + drag, left button | Everything in the rectangle is dropped from the plan |
-| Shift + drag, right button | Everything in the rectangle is marked as outside the perimeter |
-| Ctrl + drag | Everything in the rectangle goes back to pending |
-| Ctrl + Z, or the Undo button | Puts back the last change, single node or whole rectangle |
+| Drag | Move the map |
+| Scroll | Zoom in and out |
+| **Fit** button | Zoom out until the whole plan is on screen |
+| **Centre on me** button | Jump to where you are standing |
+| Left click a node | Drop it from the plan (it is not built at all) |
+| Right click a node | Mark it excluded (built, but not part of the perimeter) |
+| Shift + drag, left | Drop everything in the rectangle |
+| Shift + drag, right | Exclude everything in the rectangle |
+| Ctrl + drag | Put the rectangle back to pending |
+| Ctrl + Z, or **Undo** | Undo the last change, one node or a whole rectangle |
+| Arrow keys | Nudge the whole grid a block (shift 5, ctrl 16) |
+| Page up / down | Move the grid in Y |
 
-In the world, with edit mode on (`B`):
+Nothing is lost by closing the screen: the plan saves itself, and reopens on its own next time
+you join that server.
+
+**4. Set it up.** On the **Grid** tab: how many beacons per node, the pyramid level, the spacing,
+and how far the grid reaches. Leave **Spacing follows level** on and the coverage lines up
+exactly, with no overlap and no holes. The line under the buttons tells you if it does.
+
+**5. Build it.** Now go dig. In the world you get:
+
+- A **beam on every beacon position** that runs to the sky like a real beacon. **Red** means it
+  is not built, **yellow** means it is started but not finished (including a pyramid that is up
+  but missing a beacon), **green** means done, grey means excluded. Press **G** to turn the beams
+  off when they are in the way.
+- The **coverage** each beacon actually gives, so holes are visible instead of theoretical.
+- A **material list** of what is left, in the HUD and on the Materials tab.
+- Nodes turn green **on their own** as you build them. You do not tell the mod anything.
+
+**6. Working as a team.** If the server has the mod, a **Server** tab appears. Press
+**Share mine** to put your plan up there; everyone else presses its name to open it. From then on
+every node anyone finishes shows up for the rest, live. The HUD says `[shared]` when what you
+mark is going out to everyone.
+
+## Keys
+
+Every binding is rebindable, from the game's controls screen or from the mod's **Keys** tab.
+Bindings can take modifiers, so `G`, `Shift + G` and `Ctrl + Shift + G` are three different
+things.
+
+| Binding | Default |
+|---------|---------|
+| Edit mode | `B` |
+| Open the screen | `Shift + B` |
+| Beams on and off | `G` |
+| Set the centre where you stand | unbound |
+| Render on and off | unbound |
+| Easy place on and off | unbound |
+| Layer up · Layer down | unbound |
+| Scan the world | unbound |
+| Undo | unbound |
+
+With edit mode on, in the world:
 
 | Input | What it does |
 |-------|--------------|
 | Scroll | Grow or shrink the grid |
-| Shift + scroll | Beacons per node, 1 to 5 |
+| Shift + scroll | Beacons per node, 1 to 6 |
 | Ctrl + scroll | Nudge the spacing |
 | Left click a node | Drop it from the plan, or put it back |
-| Right click a node | Mark it as outside the perimeter, or put it back |
-
-The commands below do the same things and are still there if you prefer typing.
-
-## Keys
-
-Every binding is rebindable, either from the game's own controls screen or from the mod's
-**Keys** tab. Only the first one has a key out of the box.
-
-| Binding | Default |
-|---------|---------|
-| Edit mode, shift for the screen | `B` |
-| Open the screen | unbound |
-| Set the centre where you stand | unbound |
-| Toggle render | unbound |
-| Toggle easy place | unbound |
-| Layer up · Layer down | unbound |
-| Scan the world | unbound |
+| Right click a node | Mark it excluded, or put it back |
 
 ## Commands
 
-Everything lives under `/bea` (or `/beaconator`).
+Three, because everything else is a button that also shows you its current value, which a command
+cannot do.
 
 | Command | What it does |
 |---------|--------------|
-| `/bea gui` | Open the screen |
-| `/bea new <name>` | Start a plan centred where you stand |
-| `/bea detect [name] [radius]` | Build the plan from beacons already standing in the world |
-| `/bea move <dx> <dy> <dz>` · `center [x y z]` | Move the plan |
-| `/bea open <name>` · `list` · `save` · `delete <name>` · `close` | Manage saved plans |
-| `/bea info` | Everything about the current plan, materials included |
-| `/bea ring <n>` | Set the grid to a concentric square |
-| `/bea side <north\|south\|east\|west> <n>` | Grow or shrink one side |
-| `/bea beacons <1-5>` | Beacons per node |
-| `/bea level <1-4>` | Pyramid level, which sets the reach |
-| `/bea spacing <n>` · `spacing auto` | Distance between nodes |
-| `/bea axis <x\|z>` | Which way beacon rows run |
-| `/bea block pyramid <id>` · `block marker <id>` | Blocks to build with |
-| `/bea marker <on\|off>` | Whether excluded nodes get a real marker block |
-| `/bea scan` | Check the whole plan against the world |
-| `/bea materials [node]` | What is needed and what is missing |
-| `/bea state <pending\|excluded\|removed>` | Set the node you are pointing at |
-| `/bea fill <status> <fromI> <fromJ> <toI> <toJ>` | Set a rectangle of nodes at once |
-| `/bea layer <all\|here\|y [toY]>` | Layer filter |
-| `/bea easyplace <on\|off>` | Assisted placement |
-| `/bea import <file>` · `export [file]` | Litematica schematics, from `schematics/` |
-| `/bea render <on\|off>` · `style <slab\|floor\|full>` · `hud <on\|off>` | Display |
+| `/bea` or `/bea gui` | Open the screen |
+| `/bea share` | Put the open plan on the server |
 
 ## The geometry, if you are curious
 
@@ -135,8 +150,13 @@ covers a square `101` blocks a side. Set the spacing to that and coverage lines 
 no overlap and no holes. Anything wider leaves strips of ground with no effect, which Beaconator
 paints red so you notice before you are standing in one.
 
-Put `n` beacons in a row on one pyramid and layer `k` becomes `(2k + 1)` by `(2k + n)`. Five
-level 4 beacons need a 9x13 base, 260 blocks, instead of five separate 9x9 pyramids.
+Beacons on one shared pyramid make layer `k` into `(2k + a)` by `(2k + b)`, where `a x b` is the
+rectangle the beacons sit in. The shape matters: four beacons in a row need 236 blocks a node,
+four in a square need 216, and across a few hundred nodes that is thousands of blocks. Beaconator
+costs every rectangle that fits your beacons and uses the cheapest.
+
+A curiosity that falls out of it: five and six beacons cost the same pyramid, since both live in
+a 2x3. There are only five primary effects, so the sixth is a spare that comes free.
 
 The maths lives in `xyz.w4ve.beaconator.model`, has no Minecraft in it, and is covered by unit
 tests against a real 208 node perimeter.

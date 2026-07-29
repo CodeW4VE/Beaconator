@@ -506,7 +506,7 @@ public final class PerimeterRenderer {
 			case PENDING -> config.colorPending;
 			case PLACED -> config.colorPlaced;
 			case EXCLUDED -> config.colorExcluded;
-			case REMOVED -> config.colorExcluded;
+			case REMOVED -> config.colorRemoved;
 		};
 	}
 

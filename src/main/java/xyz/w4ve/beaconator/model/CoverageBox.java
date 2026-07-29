@@ -77,12 +77,8 @@ public final class CoverageBox {
 		}
 
 		int r = rangeFor(level);
-		int extra = beacons - 1;
-		int minX = x - r;
-		int maxX = x + r + (axis == RowAxis.X ? extra : 0);
-		int minZ = z - r;
-		int maxZ = z + r + (axis == RowAxis.Z ? extra : 0);
-		return new CoverageBox(minX, maxX, minZ, maxZ, y - r, r);
+		int[] off = PyramidCalculator.groupOffsets(beacons, PyramidCalculator.MAX_LEVEL, axis);
+		return new CoverageBox(x - r + off[0], x + r + off[1], z - r + off[2], z + r + off[3], y - r, r);
 	}
 
 	public int minX() {

@@ -34,6 +34,19 @@ First build.
 - Client-side only, none of this runs and the mod behaves exactly as before. A vanilla client on
   a server that has the mod is never sent anything.
 
+### Getting it right in the world
+
+- **Yellow for half built.** A node that is started but not finished, including a pyramid that is
+  up and one beacon short, no longer shades towards green and looks done from a distance.
+- The beacons of a node take the **cheapest shape**, not a row: four go in a square for 216
+  blocks against 236, five and six in a 2x3 for 244 against 260 and 284. Every rectangle that
+  fits is costed and the best one wins.
+- **Rotation in quarter turns** rather than an axis, so a node's beacons can hang off whichever
+  side of it suits the perimeter.
+- Optional **cap block on the nodes that stay in**, the way excluded ones get their marker.
+- Colours are settings, on the Display tab, with dropped nodes finally separate from excluded
+  ones.
+
 ### Grid
 
 - Concentric rings from a single centre point: 1, 9, 25, 49 nodes and up, `(2n+1)^2`.
