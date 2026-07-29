@@ -42,7 +42,7 @@ it sorts itself out on upload.
 | Summary | Plan and build beacon perimeters: grid from one point, real coverage volumes, beams to the sky where beacons are still missing. |
 | Categories | `utility`, `management` (secondary: `optimization` does not apply, leave it off) |
 | Client side | **Required** |
-| Server side | **Unsupported** — the mod is client only |
+| Server side | **Optional**, the sync only. The mod is client side without it |
 | Project type | Mod |
 | Loader | Fabric |
 | License | MIT |

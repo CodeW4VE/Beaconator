@@ -57,8 +57,8 @@ rewritten against it: not hard, but it is a rewrite of the drawing layer rather 
 
 ## What does not break
 
-`model/` — the grid maths, the pyramid calculator, the coverage boxes, the litematic bit
-packing — produced **zero errors on every version tested**. It has no Minecraft imports and its
+`model/` (the grid maths, the pyramid calculator, the coverage boxes, the litematic bit
+packing) produced **zero errors on every version tested**. It has no Minecraft imports and its
 50 tests run without the game. That is roughly half the mod, and it ports for free.
 
 The damage by file, going to 1.21.11:

@@ -50,9 +50,9 @@ thing, so "see through" has to become two pipelines, chosen per draw.
 
 Every read from a tag changed shape:
 
-- `Optional<Integer> cannot be converted to int` — 18 times
-- `Optional<CompoundTag> cannot be converted to CompoundTag` — 12 times
-- `Optional<long[]> cannot be converted to long[]` — 2 times
+- `Optional<Integer> cannot be converted to int`, 18 times
+- `Optional<CompoundTag> cannot be converted to CompoundTag`, 12 times
+- `Optional<long[]> cannot be converted to long[]`, 2 times
 
 **File:** `io/LitematicIO.java`, 40 of the 88 errors, on its own.
 
@@ -82,8 +82,8 @@ This one is not "port the mod", it is "set up the project again and then port th
 
 ## What does not break, ever
 
-`model/` — the grid maths, the pyramid footprint calculator, the coverage boxes, the litematic
-bit packing — produced **zero errors on every single version tested**, up to and including 26.2.
+`model/` (the grid maths, the pyramid footprint calculator, the coverage boxes, the litematic
+bit packing) produced **zero errors on every single version tested**, up to and including 26.2.
 It has no Minecraft imports and its tests run without the game.
 
 That is roughly half the mod, and the half with the actual thinking in it. Whatever we do, we
