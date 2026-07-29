@@ -45,6 +45,14 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
+      # Deleted rather than excluded by a pattern: a `!` line did not stop
+      # mc-publish picking it up, and being first alphabetically it became the
+      # primary download twice, so everyone pressing Download on Modrinth got a
+      # jar that is not a mod. The GitHub release above has already taken its
+      # copy, so there is nothing to lose here.
+      - name: keep the sources jar out of modrinth
+        run: rm -f build/libs/*-sources.jar
+
       # Game versions, loaders and dependencies are read from fabric.mod.json,
       # so there is one place to keep them right.
       - name: publish to modrinth
@@ -53,12 +61,7 @@ jobs:
         with:
           modrinth-id: ${{ vars.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          # Not the sources jar. It matches the same pattern and, being first
-          # alphabetically, got uploaded as the primary download: everyone
-          # pressing Download would have got a jar that is not a mod.
-          files: |
-            build/libs/beaconator-*+*.jar
-            !build/libs/*-sources.jar
+          files: build/libs/beaconator-*+*.jar
           name: ${{ github.ref_name }}
           version-type: release
           changelog-file: CHANGELOG.md
