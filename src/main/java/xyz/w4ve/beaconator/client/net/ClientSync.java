@@ -58,9 +58,15 @@ public final class ClientSync {
 		return openShared;
 	}
 
-	/** The server has the mod and this client can talk to it. */
+	/**
+	 * The server has the mod and this client can talk to it.
+	 *
+	 * <p>Asked about a payload that travels client to server. {@code canSend} answers "can I send
+	 * this", so asking it about a server to client payload is always no, which hid the Server tab
+	 * and both share buttons on a server that had the mod installed and working.
+	 */
 	public static boolean connected() {
-		return ClientPlayNetworking.canSend(PlanListPayload.TYPE);
+		return ClientPlayNetworking.canSend(PlanRequestPayload.TYPE);
 	}
 
 	public static void forget() {
