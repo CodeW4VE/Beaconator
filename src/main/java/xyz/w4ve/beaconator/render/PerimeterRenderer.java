@@ -50,7 +50,8 @@ public final class PerimeterRenderer {
 
 		BeaconatorConfig config = BeaconatorConfig.get();
 
-		if (!config.renderCoverage && !config.renderWireframe && !config.renderBeaconMarkers) {
+		if (!config.renderCoverage && !config.renderWireframe && !config.renderBeaconMarkers
+				&& !config.showBeams) {
 			return;
 		}
 
@@ -103,7 +104,9 @@ public final class PerimeterRenderer {
 
 	private static void drawFaces(PerimeterPlan plan, List<GridNode> nodes, Minecraft mc,
 			BeaconatorConfig config, Matrix4f matrix) {
-		if (!config.renderCoverage) {
+		// Beams and gap strips are their own settings and do not belong to the coverage volumes.
+		// They used to live behind this check, so turning the coverage off took the beams with it.
+		if (!config.renderCoverage && !config.showBeams && !plan.hasCoverageGaps()) {
 			return;
 		}
 
@@ -115,7 +118,7 @@ public final class PerimeterRenderer {
 		for (GridNode node : nodes) {
 			NodeStatus status = plan.statusAt(node.key());
 
-			if (!isVisible(plan, node, status, mc, config)) {
+			if (!config.renderCoverage || !isVisible(plan, node, status, mc, config)) {
 				continue;
 			}
 
