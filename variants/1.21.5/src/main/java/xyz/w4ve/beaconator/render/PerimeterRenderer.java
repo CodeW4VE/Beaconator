@@ -462,7 +462,7 @@ public final class PerimeterRenderer {
 		return switch (config.coverageStyle) {
 			case SLAB -> new double[] {slabY, slabY + thickness};
 			case FLOOR -> new double[] {box.renderMinY(), box.renderMinY() + thickness};
-			case FULL -> new double[] {box.renderMinY(), box.renderMaxY(mc.level.getMaxBuildHeight())};
+			case FULL -> new double[] {box.renderMinY(), box.renderMaxY(mc.level.getMaxY())};
 		};
 	}
 

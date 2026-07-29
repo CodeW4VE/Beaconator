@@ -1029,7 +1029,10 @@ public class BeaconatorScreen extends Screen {
 		int left = width / 2 - 154;
 		int right = width / 2 + 4;
 		int y = 32;
-		int step = 22;
+		// Thirteen rows have to fit above the Done button, and at a big gui scale the screen is
+		// only 240 tall. Derive the spacing from the room there actually is rather than assuming
+		// 22 and running off the bottom of small screens.
+		int step = Math.clamp((height - 34 - y) / 13, 17, 22);
 
 		// displayOnlyValue, or the widget prefixes the value with an empty message and a stray
 		// ": " shows up at the front of the button.
@@ -1081,51 +1084,53 @@ public class BeaconatorScreen extends Screen {
 			config.save();
 		}, 64, 8192, 128);
 
-		onOff(left, y + step * 4 + 4, "display.beacon_boxes", config.renderBeaconMarkers,
+		onOff(left, y + step * 4, "display.beacon_boxes", config.renderBeaconMarkers,
 				value -> config.renderBeaconMarkers = value);
-		onOff(right, y + step * 4 + 4, "display.pyramid_outline", config.renderPyramidFootprint,
+		onOff(right, y + step * 4, "display.pyramid_outline", config.renderPyramidFootprint,
 				value -> config.renderPyramidFootprint = value);
-		onOff(left, y + step * 5 + 4, "display.progress", config.showProgressColor,
+		onOff(left, y + step * 5, "display.progress", config.showProgressColor,
 				value -> config.showProgressColor = value);
-		onOff(left, y + step * 7 + 8 + 22, "display.shade_excluded", config.shadeExcluded,
-				value -> config.shadeExcluded = value);
-		onOff(right, y + step * 5 + 4, "display.easy_place", config.easyPlace,
+		onOff(right, y + step * 5, "display.easy_place", config.easyPlace,
 				value -> config.easyPlace = value);
-		onOff(left, y + step * 6 + 8, "display.strict", config.strictPlacement,
+		onOff(left, y + step * 6, "display.strict", config.strictPlacement,
 				value -> config.strictPlacement = value);
 
-		CycleButton<Boolean> follow = onOff(right, y + step * 6 + 8, "display.follow_litematica",
+		CycleButton<Boolean> follow = onOff(right, y + step * 6, "display.follow_litematica",
 				config.followLitematicaEasyPlace, value -> config.followLitematicaEasyPlace = value);
 		follow.active = LitematicaBridge.installed();
 
-		onOff(left, y + step * 7 + 8, "display.beams", config.showBeams,
+		onOff(left, y + step * 7, "display.beams", config.showBeams,
 				value -> config.showBeams = value);
 
 		// In pixels, not blocks: a beam is only useful if it stays visible from across the site.
-		stepper(right, y + step * 7 + 8, Lang.t("display.beam_pixels"),
+		stepper(right, y + step * 7, Lang.t("display.beam_pixels"),
 				() -> Math.round(config.beamMinPixels), value -> {
 					config.beamMinPixels = Math.clamp(value, 0, 16);
 					config.save();
 				}, 0, 16, 1);
 
-		// Colours, on the tab where you are already looking at the thing they colour.
-		int colourY = y + step * 8 + 10;
+		// Colours, on the tab where you are already looking at the thing they colour. Seven of
+		// them fill four rows of two, and the toggle for shading excluded nodes takes the eighth
+		// slot: it belongs with the colours and it saves a row, which this tab has run out of.
+		int colourY = y + step * 8;
 		colourButton(left, colourY, 150, "colour.pending", () -> config.colorPending,
 				value -> config.colorPending = value);
 		colourButton(right, colourY, 150, "colour.partial", () -> config.colorPartial,
 				value -> config.colorPartial = value);
-		colourButton(left, colourY + 22, 150, "colour.placed", () -> config.colorPlaced,
+		colourButton(left, colourY + step, 150, "colour.placed", () -> config.colorPlaced,
 				value -> config.colorPlaced = value);
-		colourButton(right, colourY + 22, 150, "colour.excluded", () -> config.colorExcluded,
+		colourButton(right, colourY + step, 150, "colour.excluded", () -> config.colorExcluded,
 				value -> config.colorExcluded = value);
-		colourButton(right, colourY + 66, 150, "colour.excluded_done", () -> config.colorExcludedDone,
-				value -> config.colorExcludedDone = value);
-		colourButton(left, colourY + 44, 150, "colour.removed", () -> config.colorRemoved,
+		colourButton(left, colourY + step * 2, 150, "colour.removed", () -> config.colorRemoved,
 				value -> config.colorRemoved = value);
-		colourButton(right, colourY + 44, 150, "colour.beam", () -> config.colorBeamPending,
+		colourButton(right, colourY + step * 2, 150, "colour.beam", () -> config.colorBeamPending,
 				value -> config.colorBeamPending = value);
+		colourButton(left, colourY + step * 3, 150, "colour.excluded_done", () -> config.colorExcludedDone,
+				value -> config.colorExcludedDone = value);
+		onOff(right, colourY + step * 3, "display.shade_excluded", config.shadeExcluded,
+				value -> config.shadeExcluded = value);
 
-		int layerY = colourY + 92;
+		int layerY = colourY + step * 4;
 		addRenderableWidget(Button.builder(
 				Component.literal(Lang.t("display.layers", LayerFilter.describe())), button -> {
 					if (LayerFilter.active()) {

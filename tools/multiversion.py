@@ -116,17 +116,24 @@ SINCE_1_21_5 = SINCE_1_21_4 + [
      'new DynamicTexture(() -> "beaconator map " + tileX + " " + tileZ, image)'),
 ]
 
+# 1.21.6 finished what 1.21.5 started: a GUI draw takes the pipeline itself rather than a
+# function that hands back a render type for it.
+SINCE_1_21_6 = SINCE_1_21_5 + [
+    ("net.minecraft.client.renderer.RenderType::guiTextured",
+     "net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED"),
+]
+
 RULES = {
     "1.21.2": SINCE_1_21_2,
     "1.21.3": SINCE_1_21_2,
     "1.21.4": SINCE_1_21_4,
     "1.21.5": SINCE_1_21_5,
-    "1.21.6": SINCE_1_21_5,
-    "1.21.7": SINCE_1_21_5,
-    "1.21.8": SINCE_1_21_5,
-    "1.21.9": SINCE_1_21_5,
-    "1.21.10": SINCE_1_21_5,
-    "1.21.11": SINCE_1_21_5,
+    "1.21.6": SINCE_1_21_6,
+    "1.21.7": SINCE_1_21_6,
+    "1.21.8": SINCE_1_21_6,
+    "1.21.9": SINCE_1_21_6,
+    "1.21.10": SINCE_1_21_6,
+    "1.21.11": SINCE_1_21_6,
 }
 
 
