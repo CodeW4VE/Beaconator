@@ -6,7 +6,8 @@ First build.
 
 ### The screen
 
-- Shift + B, a bindable key of its own, `/bea gui`, or the Mod Menu entry.
+- Shift + B, `/bea`, or the Mod Menu entry. Every binding takes modifiers, so `G`, `Shift + G`
+  and `Ctrl + Shift + G` are three different things.
 - Tabs for the map, the plan, the grid, the blocks, the material list, the keys and the display
   options. Every setting shows its current value, which is the one thing a command cannot do.
 - **Map tab**: the mod's own map at one pixel per block, rasterised from the chunks you load as
@@ -23,13 +24,12 @@ First build.
 
 ### Sharing a plan with the server
 
-- The same jar now runs on a Fabric server. Put it there and one plan is shared by everyone:
-  an operator sends theirs with `/bea publish` or the button in the Plan tab, and from then on
-  every client with the mod gets it on join and sees every node the others place, exclude or
-  drop, live. The HUD says `[shared]` so you know your clicks are going out.
-- Anyone with the mod can mark nodes. Replacing or taking down the shared plan is for operators.
-  Digging a perimeter is teamwork; asking an admin to tick off each finished node would be worse
-  than not sharing it at all.
+- The same jar now runs on a Fabric server. Put it there and a **Server** tab appears listing
+  the plans the server holds: press one to open it, Share mine to put yours up. From then on
+  every node anyone places, excludes or drops shows up live for the rest, and the HUD says
+  `[shared]` so you know your clicks are going out.
+- Anyone with the mod can share a plan and mark nodes. Digging a perimeter is teamwork, and
+  asking an admin to tick off each finished node would be worse than not sharing it at all.
 - The plan lives in the world folder, so a copy of the world carries the perimeter with it.
 - Client-side only, none of this runs and the mod behaves exactly as before. A vanilla client on
   a server that has the mod is never sent anything.
@@ -51,7 +51,8 @@ First build.
 
 - Concentric rings from a single centre point: 1, 9, 25, 49 nodes and up, `(2n+1)^2`.
 - Sides can be grown on their own, because real perimeters are not square.
-- 1 to 5 beacons per node on one shared pyramid, layer sizes `(2k+1) x (2k+n)`.
+- 1 to 6 beacons per node on one shared pyramid, layer sizes `(2k+a) x (2k+b)` for whatever
+  rectangle the beacons need.
 - Spacing follows the pyramid level by default (`2r + 1`, exact coverage), or is set by hand.
 - Strips of ground with no coverage are painted red when the spacing is too wide.
 
@@ -78,8 +79,8 @@ First build.
 - Shift drag on the map marks a whole rectangle of nodes at once: left button drops them, right
   button marks them as outside the perimeter, control puts them back to pending. The rectangle
   and the nodes it catches are highlighted while you drag.
-- Undo, on Ctrl + Z, a button on the map, a bindable key and `/bea undo`. Covers single clicks,
-  rectangles and `/bea fill`, up to 64 steps back.
+- Undo, on Ctrl + Z, a button on the map and a bindable key. Covers single clicks and whole
+  rectangles, up to 64 steps back.
 
 ### Editing
 
@@ -87,11 +88,11 @@ First build.
   scroll nudges the spacing.
 - Left click drops a node, right click marks it as outside the perimeter with a real marker
   block on top. Both toggle back.
-- `/bea fill` sets a rectangle of nodes at once.
+- Shift + drag on the map sets a rectangle of nodes at once.
 
 ### Building
 
-- Live scan turns finished nodes green and shades half built ones towards green.
+- Live scan turns finished nodes green and half built ones yellow, on their own.
 - Material list of what is needed and what is still missing, in total and per node.
 - Assisted placement picks the right block from your hotbar and refuses to put plan blocks
   where the plan wants none.
@@ -99,8 +100,8 @@ First build.
 
 ### Import and export
 
-- `/bea detect` reads a perimeter that is already standing in the world, straight from the
-  loaded chunks, with real coordinates.
-- `/bea import` and `/bea export` for Litematica schematics. Our own files remember the world
-  corner they came from; other people's land at your feet.
+- **Detect from world** reads a perimeter that is already standing, straight from the loaded
+  chunks, with real coordinates.
+- Litematica import and export from the Plan tab. Our own files remember the world corner they
+  came from; other people's land at your feet.
 - Plans are saved per world under `config/beaconator/`.
