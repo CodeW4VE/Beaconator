@@ -361,7 +361,7 @@ public class BeaconatorScreen extends Screen {
 		setStatus("Node " + key + ": " + Lang.state(next),
 				next == NodeStatus.REMOVED ? WARN_COLOR : next == NodeStatus.PENDING ? OK_COLOR : DIM_COLOR);
 		PlanManager.markDirty();
-		ScanCache.clear();
+		ScanCache.invalidate(key);
 		return true;
 	}
 
@@ -410,7 +410,7 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		PlanManager.markDirty();
-		ScanCache.clear();
+		ScanCache.invalidate(keys);
 		setStatus(Lang.t("map.selected", keys.size(), Lang.state(mode.status())),
 				mode == MapView.SelectionMode.REMOVE ? WARN_COLOR : OK_COLOR);
 	}

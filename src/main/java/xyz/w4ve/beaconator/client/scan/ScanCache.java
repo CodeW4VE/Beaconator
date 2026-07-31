@@ -33,6 +33,23 @@ public final class ScanCache {
 		RESULTS.clear();
 	}
 
+	/**
+	 * Forgets the reading of the nodes given, and only those.
+	 *
+	 * <p>Changing a node's state changes the blocks it asks for, so its last scan is stale. The
+	 * other two hundred are not: wiping the lot made every finished node lose its colour on every
+	 * click, and only the ones within auto scan range ever got it back.
+	 */
+	public static void invalidate(Iterable<NodeKey> keys) {
+		for (NodeKey key : keys) {
+			RESULTS.remove(key);
+		}
+	}
+
+	public static void invalidate(NodeKey key) {
+		RESULTS.remove(key);
+	}
+
 	public static void tick(Minecraft mc) {
 		PerimeterPlan plan = PlanManager.plan();
 		BeaconatorConfig config = BeaconatorConfig.get();
