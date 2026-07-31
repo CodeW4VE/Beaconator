@@ -17,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -33,6 +34,7 @@ import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.client.map.MapStore;
 import xyz.w4ve.beaconator.client.map.MapView;
 import xyz.w4ve.beaconator.client.net.ClientSync;
+import xyz.w4ve.beaconator.client.scan.NodeScan;
 import xyz.w4ve.beaconator.client.scan.ScanCache;
 import xyz.w4ve.beaconator.client.scan.WorldGridDetector;
 import xyz.w4ve.beaconator.client.scan.WorldScanner;
@@ -160,6 +162,20 @@ public class BeaconatorScreen extends Screen {
 		addRenderableWidget(Button.builder(Lang.c("done"), button -> onClose())
 				.bounds(width / 2 - 50, height - 28, 100, 20).build());
 
+		// Next to Done and on every tab, because "get this off my screen" is not a display
+		// preference to go hunting for, it is the thing you want at hand.
+		BeaconatorConfig config = BeaconatorConfig.get();
+		addRenderableWidget(Button.builder(
+				Lang.c(config.enabled ? "master.button_on" : "master.button_off"), button -> {
+					BeaconatorConfig current = BeaconatorConfig.get();
+					current.enabled = !current.enabled;
+					current.save();
+					rebuildWidgets();
+				})
+				.bounds(8, height - 28, 110, 20)
+				.tooltip(Tooltip.create(Lang.c("master.tooltip")))
+				.build());
+
 		boolean needsPlan = activeTab != Tab.PLAN && activeTab != Tab.DISPLAY
 				&& activeTab != Tab.KEYS && activeTab != Tab.SHARED;
 
@@ -275,12 +291,35 @@ public class BeaconatorScreen extends Screen {
 					+ "  [" + Lang.state(plan.statusAt(hovered)) + "]";
 			graphics.drawString(font, text, width - 8 - font.width(text), mapY() + mapHeight() + 4,
 					LABEL_COLOR, false);
+
+			// Why is this node not green? Without the numbers and the exact spot the plan expects
+			// a beacon at, a node that reads as empty is impossible to tell from a plan that is
+			// looking one block, or one Y level, off what was actually built.
+			String detail = scanDetail(plan, hovered, node);
+			graphics.drawString(font, detail, width - 8 - font.width(detail),
+					mapY() + mapHeight() + 15, DIM_COLOR, false);
 		}
 
 		if (!PlanManager.inPlanDimension()) {
 			graphics.drawCenteredString(font, Lang.t("wrong_dimension", plan.dimension()),
 					width / 2, mapY() + 8, WARN_COLOR);
 		}
+	}
+
+	/** One line of "here is what the scan saw", for working out why a node is not green. */
+	private static String scanDetail(PerimeterPlan plan, NodeKey key, GridNode node) {
+		NodeScan scan = ScanCache.get(key);
+		List<int[]> beacons = plan.beaconPositionsOf(node);
+		String expects = beacons.isEmpty() ? "-"
+				: beacons.get(0)[0] + " " + beacons.get(0)[1] + " " + beacons.get(0)[2];
+
+		if (scan == null || !scan.loaded()) {
+			return "not read yet  ·  beacon expected at " + expects;
+		}
+
+		return scan.found() + "/" + scan.expected() + " blocks  ·  "
+				+ scan.beaconsFound() + "/" + scan.beaconsExpected() + " beacons  ·  "
+				+ "beacon expected at " + expects;
 	}
 
 	private boolean overMap(double mouseX, double mouseY) {

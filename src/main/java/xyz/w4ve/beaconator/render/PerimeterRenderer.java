@@ -50,6 +50,10 @@ public final class PerimeterRenderer {
 
 		BeaconatorConfig config = BeaconatorConfig.get();
 
+		if (!config.enabled) {
+			return;
+		}
+
 		if (!config.renderCoverage && !config.renderWireframe && !config.renderBeaconMarkers
 				&& !config.showBeams) {
 			return;

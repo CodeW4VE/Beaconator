@@ -37,7 +37,7 @@ public final class ScanCache {
 		PerimeterPlan plan = PlanManager.plan();
 		BeaconatorConfig config = BeaconatorConfig.get();
 
-		if (plan == null || mc.level == null || mc.player == null || !config.autoScan
+		if (plan == null || mc.level == null || mc.player == null || !config.enabled || !config.autoScan
 				|| !PlanManager.inPlanDimension()) {
 			return;
 		}
@@ -76,12 +76,15 @@ public final class ScanCache {
 		int complete = 0;
 
 		for (GridNode node : nodes) {
-			NodeScan scan = scanAndApply(mc, plan, node);
+			scanAndApply(mc, plan, node);
+			// Counted off the cache, not off this pass: a node read earlier and now out of view
+			// is still a node we know about, and that is what the map is showing.
+			NodeScan known = RESULTS.get(node.key());
 
-			if (scan.loaded()) {
+			if (known != null && known.loaded()) {
 				scanned++;
 
-				if (scan.complete()) {
+				if (known.complete()) {
 					complete++;
 				}
 			}
@@ -99,17 +102,22 @@ public final class ScanCache {
 		}
 
 		NodeScan scan = WorldScanner.scanNode(mc.level, plan, node);
-		RESULTS.put(node.key(), scan);
 
 		if (!scan.loaded()) {
+			// Walking away is not news about the node. Keep the last real reading so the colour
+			// survives the chunks unloading, and only record "unknown" if we never read it.
+			RESULTS.putIfAbsent(node.key(), scan);
 			return scan;
 		}
 
-		// Only pending and placed flip automatically. Excluded and removed are the player's call.
+		RESULTS.put(node.key(), scan);
+
+		// Pending nodes are promoted once their beacons are up. The reverse is deliberately not
+		// done: a node that reads as empty is far more often a misread plan (wrong Y, beacon group
+		// on the other side) than a dismantled perimeter, and downgrading rewrites the plan on the
+		// spot. The progress colour already says "I cannot see it" without destroying anything.
 		if (status == NodeStatus.PENDING && scan.beaconsPlaced()) {
 			PlanManager.changeStatus(node.key(), NodeStatus.PLACED);
-		} else if (status == NodeStatus.PLACED && !scan.beaconsPlaced()) {
-			PlanManager.changeStatus(node.key(), NodeStatus.PENDING);
 		}
 
 		return scan;

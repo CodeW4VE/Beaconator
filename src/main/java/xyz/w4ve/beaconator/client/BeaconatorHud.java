@@ -31,7 +31,8 @@ public final class BeaconatorHud {
 		PerimeterPlan plan = PlanManager.plan();
 		BeaconatorConfig config = BeaconatorConfig.get();
 
-		if (plan == null || !config.showHud || mc.options.hideGui || mc.screen != null) {
+		if (plan == null || !config.enabled || !config.showHud || mc.options.hideGui
+				|| mc.screen != null) {
 			return;
 		}
 

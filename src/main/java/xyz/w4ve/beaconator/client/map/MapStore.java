@@ -10,6 +10,7 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.Level;
 import xyz.w4ve.beaconator.client.PlanManager;
+import xyz.w4ve.beaconator.config.BeaconatorConfig;
 import xyz.w4ve.beaconator.io.PlanStore;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 
@@ -70,7 +71,10 @@ public final class MapStore {
 		PerimeterPlan plan = PlanManager.plan();
 		Level level = minecraft.level;
 
-		if (plan == null || level == null || minecraft.player == null || !PlanManager.inPlanDimension()) {
+		// Rasterising costs a slice of every tick, so the master switch stops it too. The tiles
+		// already on disk stay, and Redraw fills whatever was missed once you switch back on.
+		if (plan == null || level == null || minecraft.player == null
+				|| !BeaconatorConfig.get().enabled || !PlanManager.inPlanDimension()) {
 			return;
 		}
 

@@ -51,6 +51,18 @@ public final class Lang {
 		put("blocks", "blocks", "bloques");
 		put("wrong_dimension", "This plan belongs to %s", "Este plan es de %s");
 
+		// master switch
+		put("master.on", "Beaconator is on again, same setup as before",
+				"Beaconator encendido otra vez, con los mismos ajustes");
+		put("master.off", "Beaconator is off: nothing drawn, nothing scanned. /bea on to bring it back",
+				"Beaconator apagado: no dibuja ni escanea nada. /bea on para traerlo de vuelta");
+		put("master.button_on", "Mod: on", "Mod: encendido");
+		put("master.button_off", "Mod: OFF", "Mod: APAGADO");
+		put("master.tooltip", "Turns off every overlay, the HUD, assisted placement and scanning, "
+				+ "without touching your settings or your plan",
+				"Apaga todos los dibujos, el HUD, la colocación asistida y el escaneo, "
+				+ "sin tocar tus ajustes ni tu plan");
+
 		// map
 		put("map.fit", "Fit", "Encajar");
 		put("map.centre", "Centre on me", "Centrar en mí");

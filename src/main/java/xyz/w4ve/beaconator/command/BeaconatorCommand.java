@@ -12,6 +12,7 @@ import xyz.w4ve.beaconator.client.Lang;
 import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.client.gui.BeaconatorScreen;
 import xyz.w4ve.beaconator.client.net.ClientSync;
+import xyz.w4ve.beaconator.config.BeaconatorConfig;
 
 /**
  * The {@code /bea} client command, which is deliberately almost nothing.
@@ -41,6 +42,14 @@ public final class BeaconatorCommand {
 		root.executes(context -> openScreen());
 		root.then(ClientCommandManager.literal("gui").executes(context -> openScreen()));
 
+		// The master switch earns a command by the same rule as the screen: it is what you reach
+		// for when the mod is in your way, and hunting through tabs is exactly what you do not
+		// want to be doing then.
+		root.then(ClientCommandManager.literal("off")
+				.executes(context -> setEnabled(context.getSource(), false)));
+		root.then(ClientCommandManager.literal("on")
+				.executes(context -> setEnabled(context.getSource(), true)));
+
 		root.then(ClientCommandManager.literal("share").executes(context -> {
 			if (!ClientSync.connected()) {
 				return error(context.getSource(), Lang.t("plan.no_server"));
@@ -55,6 +64,13 @@ public final class BeaconatorCommand {
 		}));
 
 		dispatcher.register(root);
+	}
+
+	private static int setEnabled(FabricClientCommandSource source, boolean enabled) {
+		BeaconatorConfig config = BeaconatorConfig.get();
+		config.enabled = enabled;
+		config.save();
+		return reply(source, Lang.t(enabled ? "master.on" : "master.off"));
 	}
 
 	private static int openScreen() {

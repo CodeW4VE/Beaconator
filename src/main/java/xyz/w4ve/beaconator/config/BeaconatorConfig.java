@@ -16,6 +16,15 @@ public class BeaconatorConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static BeaconatorConfig instance;
 
+	/**
+	 * The master switch. Off means the mod draws nothing, reads nothing and touches no placement:
+	 * as close to not having it installed as you can get without deleting the jar.
+	 *
+	 * <p>Deliberately does not touch any other setting, so turning it back on restores exactly the
+	 * setup you had. The screen and {@code /bea} stay available, or there would be no way back.
+	 */
+	public boolean enabled = true;
+
 	// -- render ---------------------------------------------------------------
 	/** Translucent faces of the coverage volume. */
 	public boolean renderCoverage = true;

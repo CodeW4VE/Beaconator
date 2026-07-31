@@ -40,8 +40,8 @@ public final class EasyPlace {
 		BeaconatorConfig config = BeaconatorConfig.get();
 		PerimeterPlan plan = PlanManager.plan();
 
-		if (!config.easyPlace || plan == null || mc.player == null || mc.level == null
-				|| PlanManager.editMode() || !PlanManager.inPlanDimension()) {
+		if (!config.enabled || !config.easyPlace || plan == null || mc.player == null
+				|| mc.level == null || PlanManager.editMode() || !PlanManager.inPlanDimension()) {
 			return;
 		}
 
@@ -108,8 +108,9 @@ public final class EasyPlace {
 		BeaconatorConfig config = BeaconatorConfig.get();
 		PerimeterPlan plan = PlanManager.plan();
 
-		if (!config.easyPlace || !config.strictPlacement || plan == null || mc.player == null
-				|| mc.level == null || PlanManager.editMode() || !PlanManager.inPlanDimension()) {
+		if (!config.enabled || !config.easyPlace || !config.strictPlacement || plan == null
+				|| mc.player == null || mc.level == null || PlanManager.editMode()
+				|| !PlanManager.inPlanDimension()) {
 			return false;
 		}
 
