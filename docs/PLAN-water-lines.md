@@ -1,6 +1,6 @@
 # Plan: water lines from the perimeter to the middle
 
-For the next session. Read this first, it has the decisions already made and the ones still open.
+Read this first, it has the decisions already made and the ones still open.
 
 ## What we are building
 
@@ -17,76 +17,136 @@ These are settled, do not reopen them:
 - **This is free real estate**, because the beacons already go as deep as they can. On the current
   plan the beacons sit at y = -55 and their pyramid goes down four layers to y = -59, which *is*
   the bottom layer. The network lives exactly where we are already digging.
-- **Items enter at the beacon column.** They drop the four blocks from the beacon down to the
-  stream, so the entry point is the node itself, no extra structure on the surface.
+- **Items enter at the beacon column.** The water starts at the beacon and runs down the side of
+  the pyramid, carrying the item with it, and lands at the foot of the base where the channel
+  passes. No structure on the surface, no stub of its own.
 - **Packed ice under the water**, water flowing one way, **pressure plates to split the currents**.
+- **What is being optimised is the trip, not the bill.** Given a choice between the network that
+  costs least and the one that gets items to the middle soonest, it is the second one. This is the
+  ruling that decides between layouts, and it is why the budget prints trip length, average trip
+  and corners next to the materials.
+- **You point at the block it drains into.** The digsort ends in a stream of water somewhere, and
+  that block is picked by looking at it, the way a beacon is picked, not by typing coordinates.
+  There is no sensible default here: the middle of a grid is usually inside the centre node's own
+  pyramid.
+- **The ice is a block like any other.** Packed ice is what we are building with, but it is picked
+  from a list the same way the pyramid block is, so blue ice or plain ice cost the plan out
+  without touching code.
+- **Two maps, one page each.** One for the beacons and one for the currents. Whichever you are on
+  is the one that lights up and the other goes dim, so a hundred nodes do not drown out the lines.
+  On the currents map you draw and erase runs one block wide, and you can see them under the
+  ground, because the point is knowing where to dig.
+- **Drawing replaces the calculation, it does not sit on top of it.** If a generated run is wrong
+  you delete it and draw yours; what is on the map is what gets built. The consequence to design
+  around: regenerating throws away what was drawn, so regenerate has to be a button you press on
+  purpose and not something that happens quietly when a node changes.
 - **It lives inside Beaconator**, not in a separate mod, but on **its own page** of the screen.
   Think of it as turning the page: a second thing this tool does, on the same grid.
 
 ## What already exists that we get for free
 
-Worth knowing before designing anything:
-
 | We have | Where | Why it matters |
 | --- | --- | --- |
 | Every node's exact position | `PerimeterPlan.nodes()` | the network's endpoints, already on a perfect grid |
+| Which nodes are actually built | `PerimeterPlan.buildNodes()` | what the network has to reach, which is far fewer than the grid |
 | The centre | `plan.centerX/centerZ` | the destination |
-| Terrain heights | `client/map/MapTile` keeps a heightmap per chunk | tells us where a line would surface or hit a cave |
-| Node states | `NodeStatus` | dropped nodes need no line; excluded ones might |
-| Material counting | `PerimeterPlan.tally()` + the Materials tab | counts the network the same way it counts pyramids |
+| The exact shape of every base | `PyramidCalculator.groupOffsets` | what the channel has to go around |
+| Material counting | `MaterialTally` + the Materials tab | counts the network the same way it counts pyramids |
 | Litematic export | `io/LitematicIO` | how the thing gets built, with Litematica |
 | Rendering boxes and lines | `render/PerimeterRenderer` | drawing the network is the same job as drawing the grid |
 | A map that draws the grid | `client/map/MapView` | the network on the map is a second layer on it |
 
-Roughly: the hard parts of a planning tool are already written. This is a new thing to plan, not
-a new tool.
+What we do **not** have, despite an earlier note here saying we did: **terrain heights**. `MapTile`
+reads a chunk's heights to shade the pixel and throws them away, so there is no heightmap to ask.
+It would not help anyway: at y = -59 what matters is caves, lava and ancient cities, not the
+surface, and the client only sees loaded chunks. Obstacle detection has to be a scan in the shape
+of `WorldScanner`, which already reports anything unloaded as unchecked rather than as clear.
 
-## The design questions to settle first
+## The design questions, answered
 
-Bring answers to these and the rest is typing.
+The model is written (`model/water/`, pure and tested, no Minecraft), so most of these now have
+numbers behind them instead of guesses.
 
-1. **Network shape.** Fishbone (each row collects into its column, columns run to the centre) or
-   spanning tree (every node joins the nearest line)? A fishbone on a regular grid is within a few
-   percent of optimal, is trivial to reason about, and is far easier to build in order. **My
-   recommendation: fishbone.**
-2. **Does every node get a line?** With 289 nodes at 101 spacing the full network is around
-   **27,000 blocks of channel**, and in packed ice that is **a quarter of a million ice blocks**.
-   Perhaps only some rows get a line, or there are zone collectors and you walk the last stretch.
-   **This is the question that decides whether the feature is useful or a fantasy.**
-3. **Y of the network.** The bottom layer is stated, but the pyramid bases already occupy it at
-   every node. Does the stream run *through* the pyramid footprint, around it, or one layer below
-   the pyramid base? This one needs looking at in game.
-4. **What happens at a river, a ravine, a cave, an ancient city.** Wall it off, route around it,
-   or flag it and let a human decide? **My recommendation: flag it.** The mod knows where the
-   line goes and can tell you it crosses something at those coordinates, and you deal with it.
-5. **Do we place the water, or only the ice and the walls?** Water and pressure plates are where
-   the "it compiled but the items stop at the corner" risk lives.
+1. **Network shape: fishbone, and it is not close.** With trips as the thing being optimised, the
+   fishbone is not merely good, it is **optimal**: every item travels exactly its own Manhattan
+   distance to the middle, turning one corner, and no channel without diagonals can do better. A
+   test asserts that node by node. The greedy tree buys a 1.5% shorter network (10,160 blocks
+   against 10,319) by making the worst trip **two and a half times longer** (2,317 against 908,
+   with ten corners instead of one). Exactly the trade we are not making. `WaterLayout.TREE` stays
+   in for the day someone plans a ring shaped perimeter, where it does win on length.
+2. **Does every node get a line? Yes, and it is affordable.** The 289 node estimate in the first
+   draft of this plan was the whole grid; a real perimeter has most of it removed. Big Culo has
+   **100 live nodes**, and the full network is **10,319 blocks of channel, 92,871 ice to mine, 54
+   shulkers**. That is a weekend of a frozen ocean, not a fantasy. Cutting to every second row
+   halves the ice and strands 50 nodes, which is a bad trade at this price.
+3. **Y of the network: the bottom layer, going around the bases.** There is no layer underneath:
+   bedrock fills y = -64 and reaches up to -60 at random, so -59 is the deepest guaranteed
+   diggable layer and the pyramid bases already sit on it. The channel therefore runs on that same
+   layer, one block clear of every base. This costs nothing, because the water coming down the
+   pyramid lands exactly there. `Corridors` models the lanes this leaves between the bases, and a
+   test asserts that no run ever crosses a base.
+4. **Rivers, ravines, caves, ancient cities: flag them.** Not built yet. It wants a scan along the
+   planned channel over loaded chunks, reporting coordinates rather than routing around them.
+   Same principle as a hand drawn run through a pyramid: say what is wrong, do not refuse.
+5. **Water and plates: counted, not yet placed.** The budget already includes 1,306 buckets and a
+   flow stop per source and per junction. Placing them is the last phase on purpose.
 
-## What I would build, in order
+## Where this stands
 
-**Phase 1, the plan and the drawing.** The network as data, drawn in the world and on the map like
-the grid already is. No blocks, no export. This is what tells us whether the shape is right, and
-it is a day.
+**Done: the model and the budget.**
 
-**Phase 2, the count.** The material list for the network, alongside the pyramids. This is what
-answers question 2 above, and it is where the tool earns its keep before a single block is placed.
+- `model/water/WaterSpec` the knobs, `WaterLayout` the shape, `WaterSegment` a run,
+  `Corridors` the lanes between the bases, `WaterNetwork` the network, `WaterBudget` the cost.
+- Pure `model/` code, so it ports to any Minecraft version for free like the rest of it.
+- `WaterNetworkTest` covers the rule that matters (no run through a base), connectivity, partial
+  coverage and the ice arithmetic.
+- `RealPlanBudgetTest` prices a saved plan from the command line:
 
-**Phase 3, the blocks.** Ice, walls, floor, and the drop from each beacon down to the stream, as a
-schematic. Exportable to litematic, buildable with Litematica.
+  ```
+  ./gradlew test -Dbeaconator.plan=config/beaconator/<world>/<name>.json
+  ```
 
-**Phase 4, water and plates.** Last on purpose. It is the only part whose correctness the compiler
-cannot check and I cannot verify without the game running it. Everything before this is useful
-even if we never do it.
+Big Culo, 100 live nodes at 101 spacing, level 4:
+
+| shape | channel | ice to mine | shulkers | buckets | longest | average | corners | ideal |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| fishbone, every row | 10,319 | 92,871 | 54 | 1,306 | **908** | 498 | 1 | 908 |
+| fishbone, every 2nd row | 5,509 | 49,581 | 29 | 698 | 797 | 478 | 1 | 797 |
+| fishbone, every 3rd row | 3,875 | 34,875 | 21 | 491 | 819 | 470 | 1 | 819 |
+| tree, every row | 10,160 | 91,440 | 53 | 1,487 | 2,317 | 1,177 | 10 | 903 |
+| fishbone, blue ice | 10,319 | 835,839 | 484 | 1,306 | 908 | 498 | 1 | 908 |
+
+The last column is the shortest trip physics allows, so a layout that matches it is wasting no
+time at all: the fishbone does, on every row. Ice is what has to be **mined**, not what is placed:
+packed ice is nine blocks of ice each, blue ice is eighty one. Blue ice buys nothing in that table
+because distance is the same, so it is only worth arguing about if the ice under the water turns
+out to change how fast an item actually moves, which is a thing to settle in game.
+
+**Next, in order.**
+
+1. **The network becomes a document.** Right now `WaterNetwork` is computed on the spot from the
+   plan. Drawing on it means it has to be a thing that is kept and saved next to the plan: the
+   runs, the drain, the spec. Generate fills it in, the map edits it, the file remembers it.
+2. **The drawing, and drawing on it.** The network in the world and on the currents map, with the
+   beacons dimmed, runs one block wide, erase and redraw, visible through the ground. A run drawn
+   through a pyramid base is drawn in red rather than refused: the mod says what it would break
+   and the call is yours.
+3. **The count.** The budget in the Materials tab, next to the pyramids.
+4. **The blocks.** Ice, floor and the drop from each beacon, exportable as a litematic.
+5. **Water and plates.** Last on purpose: it is the only part whose correctness the compiler
+   cannot check.
 
 ## What worries me
 
 - **I cannot test the flow.** Water is decided by the game. A channel that is right on paper can
-  stop an item at a junction, and the only way to find out is to build it. Phases 1 to 3 are
-  designed so that this only bites at the very end.
-- **The scale.** See question 2. The right answer might be "not the whole thing".
+  stop an item at a junction, and the only way to find out is to build it. Everything above is
+  designed so this only bites at the very end.
+- **Junctions.** There is no room to step down towards the middle at the bottom layer, so the
+  current is made by sources and stopped by plates, and every place two runs meet head on is a
+  place items can pile up. The budget counts them; nothing has proved one works yet.
 - **Feature creep in the screen.** The screen already has eight tabs. This needs to be its own
-  page with its own tabs, not four more buttons crammed into Display. Whatever we do, `docs/UX.md`
-  applies: text that fits, greyed out when unavailable, saves itself.
+  page with its own tabs, not four more buttons crammed into Display. `docs/UX.md` applies: text
+  that fits, greyed out when unavailable, saves itself.
 
 ## Naming
 

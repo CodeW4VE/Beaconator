@@ -58,6 +58,14 @@ test {
 	if (System.getProperty("beaconator.schematic") != null) {
 		systemProperty "beaconator.schematic", System.getProperty("beaconator.schematic")
 	}
+
+	// Presupuesta la red de agua sobre un plan guardado: ./gradlew test -Dbeaconator.plan=/ruta/plan.json
+	// Los tests que leen ficheros de fuera no pueden quedarse en UP-TO-DATE, o el segundo intento
+	// no imprime nada y parece que no hay red que contar.
+	if (System.getProperty("beaconator.plan") != null) {
+		systemProperty "beaconator.plan", System.getProperty("beaconator.plan")
+		outputs.upToDateWhen { false }
+	}
 }
 
 processResources {
