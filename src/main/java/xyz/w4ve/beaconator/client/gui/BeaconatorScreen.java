@@ -220,8 +220,8 @@ public class BeaconatorScreen extends Screen {
 		int left = 6;
 		int gap = 4;
 
-		// Six buttons on one row: share out whatever width the screen actually has instead of
-		// laying them out at fixed positions that fall off the edge at small gui scales.
+		// One row of buttons: share out whatever width the screen actually has instead of laying
+		// them out at fixed positions that fall off the edge at small gui scales.
 		record MapButton(Component label, Runnable action) {
 		}
 
@@ -229,6 +229,8 @@ public class BeaconatorScreen extends Screen {
 				new MapButton(Lang.c("map.fit"),
 						() -> MAP_VIEW.fit(PlanManager.plan(), mapWidth(), mapHeight())),
 				new MapButton(Lang.c("map.centre"), MAP_VIEW::centreOnPlayer),
+				new MapButton(Lang.c(MAP_VIEW.moveMode() ? "map.move_on" : "map.move_off"),
+						MAP_VIEW::toggleMoveMode),
 				new MapButton(Lang.c(MAP_VIEW.showCoverage() ? "map.coverage_on" : "map.coverage_off"),
 						MAP_VIEW::toggleCoverage),
 				new MapButton(Lang.c(MAP_VIEW.showGrid() ? "map.outlines_on" : "map.outlines_off"),
@@ -245,7 +247,10 @@ public class BeaconatorScreen extends Screen {
 
 		for (int index = 0; index < buttons.size(); index++) {
 			MapButton entry = buttons.get(index);
-			addRenderableWidget(Button.builder(entry.label(), b -> {
+			// Cut to what the button actually has room for. Minecraft centres a button's label and
+			// spills it out of both sides, and one more button on this row means less room each.
+			Component label = Component.literal(fit(entry.label().getString(), buttonWidth - 8));
+			addRenderableWidget(Button.builder(label, b -> {
 				entry.action().run();
 				rebuildWidgets();
 			}).bounds(left + index * (buttonWidth + gap), buttonY, buttonWidth, 18).build());
@@ -270,8 +275,10 @@ public class BeaconatorScreen extends Screen {
 				DIM_COLOR, false);
 		// Two hints on one line, and on a narrow screen they used to overprint each other into
 		// mush. The mouse one wins the space; the arrow keys one gives way.
-		String mouseHint = MAP_VIEW.selecting() ? Lang.t("map.hint_area") : Lang.t("map.hint");
-		String moveHint = Lang.t("map.hint_move");
+		String mouseHint = MAP_VIEW.selecting() ? Lang.t("map.hint_area")
+				: MAP_VIEW.moveMode() ? Lang.t("map.hint_moving")
+				: Lang.t("map.hint");
+		String moveHint = MAP_VIEW.moveMode() ? "" : Lang.t("map.hint_move");
 		int hintY = mapY() + mapHeight() + 16;
 
 		if (font.width(mouseHint) + font.width(moveHint) + 24 <= width) {
@@ -287,7 +294,9 @@ public class BeaconatorScreen extends Screen {
 
 		if (hovered != null) {
 			GridNode node = plan.nodeAt(hovered);
+			int[] offset = plan.offsetAt(hovered);
 			String text = Lang.t("map.node_at", hovered.toString(), node.x(), node.z())
+					+ (plan.moved(hovered) ? String.format("  (%+d, %+d)", offset[0], offset[1]) : "")
 					+ "  [" + Lang.state(plan.statusAt(hovered)) + "]";
 			graphics.drawString(font, text, width - 8 - font.width(text), mapY() + mapHeight() + 4,
 					LABEL_COLOR, false);
@@ -340,6 +349,17 @@ public class BeaconatorScreen extends Screen {
 
 		PerimeterPlan plan = PlanManager.plan();
 
+		// Move mode, or alt as the shortcut for it: grab the node instead of toggling it.
+		if (button == 0 && (MAP_VIEW.moveMode() || hasAltDown())) {
+			NodeKey grabbed = MAP_VIEW.nodeAt(plan, mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
+
+			if (grabbed != null) {
+				PlanHistory.record(plan, grabbed, Lang.t("map.undo_move"));
+				MAP_VIEW.beginMove(plan, mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
+				return true;
+			}
+		}
+
 		// Shift or control starts a rectangle instead of touching a single node.
 		if (button <= 1 && (hasShiftDown() || hasControlDown())) {
 			MapView.SelectionMode mode = hasControlDown()
@@ -367,6 +387,18 @@ public class BeaconatorScreen extends Screen {
 
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+		if (MAP_VIEW.movingNode()) {
+			PerimeterPlan plan = PlanManager.plan();
+			int[] offset = MAP_VIEW.updateMove(plan, mouseX, mouseY,
+					mapX(), mapY(), mapWidth(), mapHeight(), hasControlDown());
+
+			if (offset != null) {
+				reportMove(MAP_VIEW.moveKey(), offset);
+			}
+
+			return true;
+		}
+
 		if (MAP_VIEW.selecting()) {
 			MAP_VIEW.updateSelection(mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
 			return true;
@@ -384,12 +416,31 @@ public class BeaconatorScreen extends Screen {
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
 		dragging = false;
 
+		if (MAP_VIEW.movingNode()) {
+			MAP_VIEW.endMove();
+			PlanManager.markDirty();
+			return true;
+		}
+
 		if (MAP_VIEW.selecting()) {
 			applySelection();
 			return true;
 		}
 
 		return super.mouseReleased(mouseX, mouseY, button);
+	}
+
+	/** Says where a node ended up, in blocks off the grid, which is what gets built. */
+	private void reportMove(NodeKey key, int[] offset) {
+		if (key == null || offset == null) {
+			return;
+		}
+
+		if (offset[0] == 0 && offset[1] == 0) {
+			setStatus(Lang.t("map.node_home", key.toString()), OK_COLOR);
+		} else {
+			setStatus(Lang.t("map.node_moved", key.toString(), offset[0], offset[1]), OK_COLOR);
+		}
 	}
 
 	/** Applies the drag rectangle to every node it caught, in one undoable step. */
@@ -918,6 +969,23 @@ public class BeaconatorScreen extends Screen {
 					: keyCode == InputConstants.KEY_RIGHT ? step : 0;
 			int dz = keyCode == InputConstants.KEY_UP ? -step
 					: keyCode == InputConstants.KEY_DOWN ? step : 0;
+
+			// In move mode the arrows belong to the node that was picked, not to the whole grid:
+			// nudging one node is the entire point of the mode, and moving all two hundred of
+			// them because the mode was left on would be a nasty surprise.
+			if ((dx != 0 || dz != 0) && MAP_VIEW.moveMode()) {
+				PerimeterPlan plan = PlanManager.plan();
+				NodeKey key = MAP_VIEW.moveKey();
+
+				if (key == null) {
+					setStatus(Lang.t("map.no_move_target"), DIM_COLOR);
+					return true;
+				}
+
+				PlanHistory.record(plan, key, Lang.t("map.undo_move"));
+				reportMove(key, MAP_VIEW.nudge(plan, dx, dz));
+				return true;
+			}
 
 			if (dx != 0 || dz != 0) {
 				PerimeterPlan plan = PlanManager.plan();

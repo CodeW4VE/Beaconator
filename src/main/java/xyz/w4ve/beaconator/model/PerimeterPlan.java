@@ -213,10 +213,13 @@ public final class PerimeterPlan {
 
 		for (int index = 0; index < nodes.size(); index++) {
 			GridNode node = nodes.get(index);
-			Integer y = yOverride(node.key());
+			NodeData data = overrides.get(node.key());
 
-			if (y != null) {
-				nodes.set(index, new GridNode(node.i(), node.j(), node.x(), y, node.z()));
+			if (data != null && (data.y() != null || data.moved())) {
+				nodes.set(index, new GridNode(node.i(), node.j(),
+						node.x() + data.dx(),
+						data.y() == null ? node.y() : data.y(),
+						node.z() + data.dz()));
 			}
 		}
 
@@ -237,8 +240,27 @@ public final class PerimeterPlan {
 	}
 
 	public GridNode nodeAt(NodeKey key) {
+		NodeData data = overrides.get(key);
+		Integer y = data == null ? null : data.y();
+		GridNode node = GridGenerator.nodeAt(centerX, y == null ? beaconY : y, centerZ, spacing,
+				key.i(), key.j());
+
+		if (data == null || !data.moved()) {
+			return node;
+		}
+
+		return new GridNode(node.i(), node.j(), node.x() + data.dx(), node.y(), node.z() + data.dz());
+	}
+
+	/** Where the grid alone would put this node, ignoring any offset it was given. */
+	public GridNode gridNodeAt(NodeKey key) {
 		Integer y = yOverride(key);
 		return GridGenerator.nodeAt(centerX, y == null ? beaconY : y, centerZ, spacing, key.i(), key.j());
+	}
+
+	/** Everything this node overrides, or the defaults when it overrides nothing. */
+	public NodeData dataAt(NodeKey key) {
+		return overrides.getOrDefault(key, NodeData.PENDING);
 	}
 
 	public NodeStatus statusAt(NodeKey key) {
@@ -276,6 +298,79 @@ public final class PerimeterPlan {
 		}
 
 		update(key, data -> data.withBeacons(beacons));
+	}
+
+	/** How far this node was dragged off the grid, as {@code [dx, dz]}. */
+	public int[] offsetAt(NodeKey key) {
+		NodeData data = overrides.get(key);
+		return data == null ? new int[] {0, 0} : new int[] {data.dx(), data.dz()};
+	}
+
+	public boolean moved(NodeKey key) {
+		NodeData data = overrides.get(key);
+		return data != null && data.moved();
+	}
+
+	/**
+	 * Moves one node off the grid without touching any other.
+	 *
+	 * <p>This is the escape hatch for the ground the grid cannot see: a node that lands in a
+	 * ravine, on something worth keeping, or a few blocks outside the shape being dug. Nudging
+	 * the whole grid to fit one node moves the other two hundred, which is why this exists.
+	 *
+	 * <p>Clamped to one spacing in each direction. Past that a node would sit closer to a
+	 * neighbour's cell than to its own, and every lookup that starts from "which cell is this"
+	 * would answer with the wrong node.
+	 */
+	public void setOffsetAt(NodeKey key, int dx, int dz) {
+		int clampedX = Math.clamp(dx, -spacing, spacing);
+		int clampedZ = Math.clamp(dz, -spacing, spacing);
+		update(key, data -> data.withOffset(clampedX, clampedZ));
+	}
+
+	/** Keys of the nodes that were dragged off the grid. Usually a handful, often none. */
+	public List<NodeKey> movedKeys() {
+		List<NodeKey> keys = new ArrayList<>();
+
+		for (Map.Entry<NodeKey, NodeData> entry : overrides.entrySet()) {
+			if (entry.getValue().moved() && extents.contains(entry.getKey().i(), entry.getKey().j())) {
+				keys.add(entry.getKey());
+			}
+		}
+
+		return keys;
+	}
+
+	/**
+	 * The node nearest a world position, or null when nothing is near enough.
+	 *
+	 * <p>Everything that turns a point into a node goes through here: pointing at the ground in
+	 * game, clicking on the map, assisted placement. On a bare grid it is the cell the point falls
+	 * in, which is one division. Moved nodes then get a say, because a node dragged forty blocks
+	 * is no longer in its own cell and would otherwise be impossible to click on.
+	 */
+	public NodeKey keyNear(double x, double z) {
+		NodeKey cell = GridGenerator.nearestKey(centerX, centerZ, spacing, x, z);
+		NodeKey best = extents.contains(cell.i(), cell.j()) ? cell : null;
+		double bestDistance = best == null ? (double) spacing * spacing : distanceTo(best, x, z);
+
+		for (NodeKey key : movedKeys()) {
+			double distance = distanceTo(key, x, z);
+
+			if (distance < bestDistance) {
+				best = key;
+				bestDistance = distance;
+			}
+		}
+
+		return best;
+	}
+
+	private double distanceTo(NodeKey key, double x, double z) {
+		GridNode node = nodeAt(key);
+		double dx = node.x() + 0.5 - x;
+		double dz = node.z() + 0.5 - z;
+		return dx * dx + dz * dz;
 	}
 
 	public Integer yOverride(NodeKey key) {
@@ -392,17 +487,39 @@ public final class PerimeterPlan {
 	/**
 	 * The block this plan wants at a position, or null if it wants nothing there.
 	 *
-	 * <p>Answered without building any index: only the nearest node can possibly reach a given
-	 * position, because a pyramid is always far smaller than the spacing between nodes. That
-	 * makes this cheap enough to call once per frame for assisted placement.
+	 * <p>Answered without building any index: a pyramid is always far smaller than the spacing,
+	 * so the only node that can reach a position is the one whose cell it falls in, plus any node
+	 * that was dragged out of its own cell. There are rarely more than a few of those, which
+	 * keeps this cheap enough to call once per frame for assisted placement.
 	 */
 	public String blockAt(int x, int y, int z) {
-		NodeKey key = GridGenerator.nearestKey(centerX, centerZ, spacing, x, z);
+		NodeKey cell = GridGenerator.nearestKey(centerX, centerZ, spacing, x, z);
 
-		if (!extents.contains(key.i(), key.j())) {
-			return null;
+		if (extents.contains(cell.i(), cell.j())) {
+			String block = blockAtNode(cell, x, y, z);
+
+			if (block != null) {
+				return block;
+			}
 		}
 
+		for (NodeKey key : movedKeys()) {
+			if (key.equals(cell)) {
+				continue;
+			}
+
+			String block = blockAtNode(key, x, y, z);
+
+			if (block != null) {
+				return block;
+			}
+		}
+
+		return null;
+	}
+
+	/** What one particular node wants at a position, or null when it does not reach it. */
+	private String blockAtNode(NodeKey key, int x, int y, int z) {
 		NodeStatus status = statusAt(key);
 
 		if (!status.isBuilt()) {

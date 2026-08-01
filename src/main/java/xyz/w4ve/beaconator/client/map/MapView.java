@@ -8,7 +8,6 @@ import xyz.w4ve.beaconator.client.Lang;
 import xyz.w4ve.beaconator.client.PlanManager;
 import xyz.w4ve.beaconator.config.BeaconatorConfig;
 import xyz.w4ve.beaconator.model.CoverageBox;
-import xyz.w4ve.beaconator.model.GridGenerator;
 import xyz.w4ve.beaconator.model.GridNode;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
@@ -41,6 +40,15 @@ public final class MapView {
 		}
 	}
 
+	/**
+	 * How close to its own row or column a dragged node has to land to snap back onto it.
+	 *
+	 * <p>Most nodes are moved because of something small in the way, and a node that stays lined
+	 * up with its row keeps the water channel that serves the row straight. Snapping means you get
+	 * that alignment by aiming roughly, instead of by counting blocks. Hold control to move free.
+	 */
+	private static final int SNAP_BLOCKS = 4;
+
 	private double centerX;
 	private double centerZ;
 	private double zoom = 1.0;
@@ -54,6 +62,15 @@ public final class MapView {
 	private double selectStartZ;
 	private double selectEndX;
 	private double selectEndZ;
+
+	private boolean moveMode;
+	/** The node being dragged right now, or the last one moved while move mode stays on. */
+	private NodeKey moveKey;
+	private boolean moving;
+	private int moveStartDx;
+	private int moveStartDz;
+	private double moveGrabX;
+	private double moveGrabZ;
 
 	public boolean showCoverage() {
 		return showCoverage;
@@ -196,15 +213,100 @@ public final class MapView {
 
 		// A shift click without dragging should still do something: take the node under it.
 		if (keys.isEmpty() && maxX - minX < plan.spacing() && maxZ - minZ < plan.spacing()) {
-			NodeKey key = GridGenerator.nearestKey(plan.centerX(), plan.centerZ(), plan.spacing(),
-					(minX + maxX) / 2.0, (minZ + maxZ) / 2.0);
+			NodeKey key = plan.keyNear((minX + maxX) / 2.0, (minZ + maxZ) / 2.0);
 
-			if (plan.extents().contains(key.i(), key.j())) {
+			if (key != null) {
 				keys.add(key);
 			}
 		}
 
 		return keys;
+	}
+
+	// ------------------------------------------------------------------- moving
+
+	public boolean moveMode() {
+		return moveMode;
+	}
+
+	public void toggleMoveMode() {
+		moveMode = !moveMode;
+
+		if (!moveMode) {
+			moving = false;
+			moveKey = null;
+		}
+	}
+
+	/** The node the arrow keys will nudge: the one being dragged, or the last one dragged. */
+	public NodeKey moveKey() {
+		return moving || moveMode ? moveKey : null;
+	}
+
+	public void setMoveKey(NodeKey key) {
+		moveKey = key;
+	}
+
+	public boolean movingNode() {
+		return moving;
+	}
+
+	/**
+	 * Grabs the node under the cursor. The offset it already has is kept, so a second drag
+	 * carries on from where the first one left it instead of starting over from the grid.
+	 */
+	public boolean beginMove(PerimeterPlan plan, double mouseX, double mouseY,
+			int x, int y, int width, int height) {
+		NodeKey key = nodeAt(plan, mouseX, mouseY, x, y, width, height);
+
+		if (key == null) {
+			return false;
+		}
+
+		int[] offset = plan.offsetAt(key);
+		moveKey = key;
+		moving = true;
+		moveStartDx = offset[0];
+		moveStartDz = offset[1];
+		moveGrabX = screenToWorldX(mouseX, x, width);
+		moveGrabZ = screenToWorldZ(mouseY, y, height);
+		return true;
+	}
+
+	/** @return the offset the node ended up with, or null when nothing is being dragged */
+	public int[] updateMove(PerimeterPlan plan, double mouseX, double mouseY,
+			int x, int y, int width, int height, boolean free) {
+		if (!moving || moveKey == null) {
+			return null;
+		}
+
+		int dx = moveStartDx + (int) Math.round(screenToWorldX(mouseX, x, width) - moveGrabX);
+		int dz = moveStartDz + (int) Math.round(screenToWorldZ(mouseY, y, height) - moveGrabZ);
+		return applyMove(plan, moveKey, dx, dz, free);
+	}
+
+	public void endMove() {
+		moving = false;
+	}
+
+	/** Nudges the node the arrow keys are aimed at. No snapping: the steps are exact already. */
+	public int[] nudge(PerimeterPlan plan, int dx, int dz) {
+		if (moveKey == null) {
+			return null;
+		}
+
+		int[] offset = plan.offsetAt(moveKey);
+		return applyMove(plan, moveKey, offset[0] + dx, offset[1] + dz, true);
+	}
+
+	private int[] applyMove(PerimeterPlan plan, NodeKey key, int dx, int dz, boolean free) {
+		if (!free) {
+			dx = Math.abs(dx) <= SNAP_BLOCKS ? 0 : dx;
+			dz = Math.abs(dz) <= SNAP_BLOCKS ? 0 : dz;
+		}
+
+		PlanManager.moveNode(key, dx, dz);
+		return plan.offsetAt(key);
 	}
 
 	private void drawSelection(GuiGraphics graphics, PerimeterPlan plan, int x, int y, int width, int height) {
@@ -240,10 +342,7 @@ public final class MapView {
 
 	/** The node under the cursor, or null when it falls outside the grid. */
 	public NodeKey nodeAt(PerimeterPlan plan, double mouseX, double mouseY, int x, int y, int width, int height) {
-		double worldX = screenToWorldX(mouseX, x, width);
-		double worldZ = screenToWorldZ(mouseY, y, height);
-		NodeKey key = GridGenerator.nearestKey(plan.centerX(), plan.centerZ(), plan.spacing(), worldX, worldZ);
-		return plan.extents().contains(key.i(), key.j()) ? key : null;
+		return plan.keyNear(screenToWorldX(mouseX, x, width), screenToWorldZ(mouseY, y, height));
 	}
 
 	public void render(GuiGraphics graphics, PerimeterPlan plan,
@@ -291,9 +390,37 @@ public final class MapView {
 			}
 		}
 
+		drawMoved(graphics, plan, x, y, width, height);
 		drawSelection(graphics, plan, x, y, width, height);
 		drawPlayer(graphics, x, y, width, height);
 		graphics.disableScissor();
+	}
+
+	/**
+	 * Where each moved node came from: a mark on the cell the grid gave it and a line to where it
+	 * actually is. Without it a perimeter with a few nudged nodes just looks like a grid that was
+	 * measured badly, and there is no way to tell a deliberate nudge from a mistake.
+	 */
+	private void drawMoved(GuiGraphics graphics, PerimeterPlan plan, int x, int y, int width, int height) {
+		for (NodeKey key : plan.movedKeys()) {
+			if (plan.statusAt(key) == NodeStatus.REMOVED) {
+				continue;
+			}
+
+			GridNode home = plan.gridNodeAt(key);
+			GridNode node = plan.nodeAt(key);
+			int homeX = (int) Math.round(worldToScreenX(home.x() + 0.5, x, width));
+			int homeZ = (int) Math.round(worldToScreenZ(home.z() + 0.5, y, height));
+			int nodeX = (int) Math.round(worldToScreenX(node.x() + 0.5, x, width));
+			int nodeZ = (int) Math.round(worldToScreenZ(node.z() + 0.5, y, height));
+			int colour = key.equals(moveKey) ? 0xFFFFC64D : 0xFFB0783C;
+
+			// The two legs of the offset rather than a diagonal: the move is read in blocks east
+			// and blocks south, which is how it gets built.
+			graphics.hLine(Math.min(homeX, nodeX), Math.max(homeX, nodeX), homeZ, colour);
+			graphics.vLine(nodeX, Math.min(homeZ, nodeZ), Math.max(homeZ, nodeZ), colour);
+			graphics.fill(homeX - 1, homeZ - 1, homeX + 2, homeZ + 2, 0x80000000 | (colour & 0xFFFFFF));
+		}
 	}
 
 	/**

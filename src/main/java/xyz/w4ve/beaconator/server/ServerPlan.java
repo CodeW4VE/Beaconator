@@ -19,6 +19,7 @@ import xyz.w4ve.beaconator.io.PlanStore;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.net.NodeMovePayload;
 import xyz.w4ve.beaconator.net.NodePayload;
 import xyz.w4ve.beaconator.net.PlanListPayload;
 import xyz.w4ve.beaconator.net.PlanPayload;
@@ -118,6 +119,31 @@ public final class ServerPlan {
 			// Back to everyone but the sender, who already has it drawn.
 			for (ServerPlayer other : server.getPlayerList().getPlayers()) {
 				if (other != player && ServerPlayNetworking.canSend(other, NodePayload.TYPE)) {
+					ServerPlayNetworking.send(other, payload);
+				}
+			}
+		});
+
+		ServerPlayNetworking.registerGlobalReceiver(NodeMovePayload.TYPE, (payload, context) -> {
+			ServerPlayer player = context.player();
+			server = player.getServer();
+			PerimeterPlan plan = PLANS.get(payload.plan());
+
+			if (plan == null) {
+				return;
+			}
+
+			NodeKey key = new NodeKey(payload.i(), payload.j());
+
+			if (!plan.extents().contains(key.i(), key.j())) {
+				return;
+			}
+
+			plan.setOffsetAt(key, payload.dx(), payload.dz());
+			save(payload.plan());
+
+			for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+				if (other != player && ServerPlayNetworking.canSend(other, NodeMovePayload.TYPE)) {
 					ServerPlayNetworking.send(other, payload);
 				}
 			}

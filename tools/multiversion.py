@@ -219,6 +219,7 @@ SINCE_1_21_9 = SINCE_1_21_6 + [
     # What is left is inside a handler, where the event is the one that knows.
     ("hasShiftDown()", "event.hasShiftDown()"),
     ("hasControlDown()", "event.hasControlDown()"),
+    ("hasAltDown()", "event.hasAltDown()"),
 
     # A key mapping's category is a registered object rather than a bare translation key, and the
     # key is built from its identifier: hence the second entry in the language files.

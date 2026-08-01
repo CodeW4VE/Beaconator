@@ -88,9 +88,27 @@ Getting around it:
 | Ctrl + Z, or **Undo** | Undo the last change, one node or a whole rectangle |
 | Arrow keys | Nudge the whole grid a block (shift 5, ctrl 16) |
 | Page up / down | Move the grid in Y |
+| Alt + drag a node, or **Move** button | Move that one node off the grid |
 
 Nothing is lost by closing the screen: the plan saves itself, and reopens on its own next time
 you join that server.
+
+### Moving a single node
+
+Sometimes a node lands where a beacon cannot go: in a ravine, on something worth keeping, or a
+few blocks outside the shape you are digging. Nudging the whole grid to fix that one node moves
+the other two hundred, so instead you move just that one, with **Move** on or by holding alt, and
+every other node stays exactly where it was.
+
+A dragged node snaps back onto its own row or column when it lands within four blocks of it. That
+is usually what you want: a node still lined up with its row keeps that row's water channel
+straight. Hold control while dragging to place it anywhere. With **Move** on, the arrow keys nudge
+the node you last clicked instead of the grid, for the last block or two.
+
+The map draws a line from a moved node back to the cell it belongs to, so a nudged perimeter still
+reads as deliberate rather than as a grid that was measured badly. A node moved off its row is
+left out of the water network: it keeps its beacons and its pyramid, but nothing routes a channel
+to it.
 
 **4. Set it up.** On the **Grid** tab: how many beacons per node, the pyramid level, the spacing,
 and how far the grid reaches. Leave **Spacing follows level** on and the coverage lines up

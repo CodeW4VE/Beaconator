@@ -11,6 +11,7 @@ import xyz.w4ve.beaconator.io.PlanStore;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.net.NodeMovePayload;
 import xyz.w4ve.beaconator.net.NodePayload;
 import xyz.w4ve.beaconator.net.PlanListPayload;
 import xyz.w4ve.beaconator.net.PlanPayload;
@@ -42,6 +43,9 @@ public final class ClientSync {
 
 		ClientPlayNetworking.registerGlobalReceiver(NodePayload.TYPE, (payload, context) ->
 				context.client().execute(() -> receiveNode(payload)));
+
+		ClientPlayNetworking.registerGlobalReceiver(NodeMovePayload.TYPE, (payload, context) ->
+				context.client().execute(() -> receiveMove(payload)));
 	}
 
 	/** The plans the server is holding. Empty when the server does not have the mod. */
@@ -118,6 +122,30 @@ public final class ClientSync {
 		}
 	}
 
+	private static void receiveMove(NodeMovePayload payload) {
+		PerimeterPlan plan = PlanManager.plan();
+
+		if (!payload.plan().equals(openShared) || plan == null) {
+			return;
+		}
+
+		NodeKey key = new NodeKey(payload.i(), payload.j());
+
+		if (!plan.extents().contains(key.i(), key.j())) {
+			return;
+		}
+
+		applying = true;
+
+		try {
+			plan.setOffsetAt(key, payload.dx(), payload.dz());
+			// The pyramid is somewhere else now, so whatever was scanned at the old spot is a lie.
+			ScanCache.invalidate(key);
+		} finally {
+			applying = false;
+		}
+	}
+
 	// ----------------------------------------------------------------- sending
 
 	/** Tells the server about a node you just changed. Does nothing off a shared plan. */
@@ -127,6 +155,15 @@ public final class ClientSync {
 		}
 
 		ClientPlayNetworking.send(new NodePayload(openShared, key.i(), key.j(), status));
+	}
+
+	/** Tells the server about a node you just dragged off the grid. */
+	public static void sendMove(NodeKey key, int dx, int dz) {
+		if (!shared() || applying || !ClientPlayNetworking.canSend(NodeMovePayload.TYPE)) {
+			return;
+		}
+
+		ClientPlayNetworking.send(new NodeMovePayload(openShared, key.i(), key.j(), dx, dz));
 	}
 
 	/** Asks for one of the server's plans. It arrives as a {@link PlanPayload} and opens itself. */

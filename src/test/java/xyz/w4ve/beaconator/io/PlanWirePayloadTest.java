@@ -59,6 +59,40 @@ class PlanWirePayloadTest {
 	}
 
 	@Test
+	void keepsMovedNodesWhereTheyWerePut() {
+		PerimeterPlan sent = sample();
+		sent.setOffsetAt(new NodeKey(1, 0), 13, -7);
+		sent.setOffsetAt(new NodeKey(0, -2), 0, 21);
+
+		PerimeterPlan got = PlanStore.fromJson(PlanStore.toJson(sent), "shared");
+
+		assertNotNull(got);
+		assertEquals(13, got.offsetAt(new NodeKey(1, 0))[0]);
+		assertEquals(-7, got.offsetAt(new NodeKey(1, 0))[1]);
+		assertEquals(21, got.offsetAt(new NodeKey(0, -2))[1]);
+		assertEquals(2, got.movedKeys().size());
+		assertEquals(NodeStatus.PLACED, got.statusAt(new NodeKey(1, 0)),
+				"a moved node keeps its state as well as its place");
+		assertEquals(sent.nodeAt(new NodeKey(1, 0)).x(), got.nodeAt(new NodeKey(1, 0)).x());
+	}
+
+	@Test
+	void aPlanWrittenBeforeNodesCouldMoveHasNoneMoved() {
+		// Every plan on disk right now looks like this. Reading one has to give nodes on the grid,
+		// not nodes at some default offset.
+		PerimeterPlan got = PlanStore.fromJson(
+				"{\"name\":\"old\",\"dimension\":\"minecraft:overworld\",\"center\":[0,64,0],"
+						+ "\"spacing\":101,\"level\":4,\"beaconsPerNode\":1,\"rowAxis\":\"Z\","
+						+ "\"extents\":[-1,1,-1,1],\"nodes\":{\"1,0\":{\"status\":\"PLACED\"}}}",
+				"old");
+
+		assertNotNull(got);
+		assertEquals(NodeStatus.PLACED, got.statusAt(new NodeKey(1, 0)));
+		assertEquals(0, got.movedKeys().size());
+		assertEquals(101, got.nodeAt(new NodeKey(1, 0)).x());
+	}
+
+	@Test
 	void rubbishOnTheWireIsNotAPlan() {
 		assertNull(PlanStore.fromJson("", "shared"));
 		assertNull(PlanStore.fromJson("not json at all", "shared"));

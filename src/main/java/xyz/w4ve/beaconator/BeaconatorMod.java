@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.w4ve.beaconator.net.NodeMovePayload;
 import xyz.w4ve.beaconator.net.NodePayload;
 import xyz.w4ve.beaconator.net.PlanListPayload;
 import xyz.w4ve.beaconator.net.PlanPayload;
@@ -32,6 +33,8 @@ public class BeaconatorMod implements ModInitializer {
 		PayloadTypeRegistry.playC2S().register(PlanRequestPayload.TYPE, PlanRequestPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(NodePayload.TYPE, NodePayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(NodePayload.TYPE, NodePayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(NodeMovePayload.TYPE, NodeMovePayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(NodeMovePayload.TYPE, NodeMovePayload.CODEC);
 
 		ServerPlan.init();
 	}

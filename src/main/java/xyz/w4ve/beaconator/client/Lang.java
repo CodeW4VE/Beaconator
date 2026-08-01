@@ -87,6 +87,16 @@ public final class Lang {
 		put("map.selected", "%d nodes set to %s", "%d nodos puestos en %s");
 		put("map.hint_area", "Shift + drag marks a rectangle, control + drag clears it. Ctrl+Z undoes.",
 				"Shift + arrastrar marca un rectángulo, control + arrastrar lo limpia. Ctrl+Z deshace.");
+		put("map.move_on", "Move: on", "Mover: sí");
+		put("map.move_off", "Move: off", "Mover: no");
+		put("map.hint_moving", "Drag a node to move it on its own, ctrl for no snapping. Arrows nudge it.",
+				"Arrastrá un nodo para moverlo solo, ctrl para que no se pegue. Las flechas lo ajustan.");
+		put("map.node_moved", "Node %s moved %d, %d off the grid",
+				"Nodo %s movido %d, %d fuera de la retícula");
+		put("map.node_home", "Node %s back on the grid", "Nodo %s de vuelta en la retícula");
+		put("map.undo_move", "move", "movimiento");
+		put("map.no_move_target", "Click a node first to pick which one the arrows move",
+				"Hacé click en un nodo primero para elegir cuál mueven las flechas");
 
 		// plan
 		put("plan.name", "Name", "Nombre");

@@ -68,10 +68,23 @@ public final class WaterNetwork {
 	 * because the water on both ends has to move towards the trunk.
 	 */
 	private static WaterNetwork fishbone(PerimeterPlan plan, WaterSpec spec) {
-		List<GridNode> live = plan.buildNodes();
+		List<GridNode> live = new ArrayList<>();
+		List<NodeKey> orphans = new ArrayList<>();
+
+		// A node moved along its own row still sits on that row's spine, so it costs nothing and
+		// stays in. One moved across rows does not, and letting it drag the spine towards itself
+		// would pull the lane away from every other node in the row. It goes without a channel,
+		// which is what a crew does with it anyway: mark it and carry the drops by hand.
+		for (GridNode node : plan.buildNodes()) {
+			if (plan.offsetAt(node.key())[1] != 0) {
+				orphans.add(node.key());
+			} else {
+				live.add(node);
+			}
+		}
 
 		if (live.isEmpty()) {
-			return empty(plan, spec);
+			return empty(plan, spec, orphans);
 		}
 
 		Map<Integer, List<GridNode>> rows = new TreeMap<>();
@@ -84,7 +97,6 @@ public final class WaterNetwork {
 		int trunkX = trunkX(plan, live, x(drain));
 		List<WaterSegment> segments = new ArrayList<>();
 		Map<NodeKey, Long> entries = new LinkedHashMap<>();
-		List<NodeKey> orphans = new ArrayList<>();
 		List<Integer> spineZ = new ArrayList<>();
 
 		for (Map.Entry<Integer, List<GridNode>> row : rows.entrySet()) {
@@ -181,12 +193,14 @@ public final class WaterNetwork {
 		List<NodeKey> orphans = new ArrayList<>();
 
 		// Rows are the only thing rowStep can skip in a tree too, so that both shapes answer the
-		// same question when coverage is cut back.
+		// same question when coverage is cut back. Moved nodes are out either way: the lattice a
+		// tree is routed on is one lane per row and per column of bases, and a node off the grid
+		// widens the lane of a whole row or column to reach itself.
 		for (GridNode node : plan.buildNodes()) {
-			if (Math.floorMod(node.j(), spec.rowStep()) == 0) {
-				live.add(node);
-			} else {
+			if (plan.moved(node.key()) || Math.floorMod(node.j(), spec.rowStep()) != 0) {
 				orphans.add(node.key());
+			} else {
+				live.add(node);
 			}
 		}
 
@@ -272,7 +286,11 @@ public final class WaterNetwork {
 	}
 
 	private static WaterNetwork empty(PerimeterPlan plan, WaterSpec spec) {
-		return new WaterNetwork(plan, spec, List.of(), Map.of(), List.of(), drain(plan, spec));
+		return empty(plan, spec, List.of());
+	}
+
+	private static WaterNetwork empty(PerimeterPlan plan, WaterSpec spec, List<NodeKey> orphans) {
+		return new WaterNetwork(plan, spec, List.of(), Map.of(), orphans, drain(plan, spec));
 	}
 
 	// --------------------------------------------------------------- geometry

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **A node can be moved on its own.** Some node always lands where a beacon cannot go, and until
+  now the only answer was to nudge the whole grid and move the other two hundred with it. Turn
+  **Move** on in the map, or hold alt, and drag that one node: everything else stays put. It snaps
+  back onto its own row or column within four blocks, so a nudged node normally stays lined up and
+  the water channel that serves its row stays straight; hold control to place it anywhere, or use
+  the arrow keys for the last block or two. The map draws a line back to the cell it came from.
+  Moved nodes travel to the rest of the team on a shared plan like any other change.
+- A node moved off its row is left out of the water network rather than dragging that row's
+  channel across the perimeter to reach it. It still gets its beacons and its pyramid.
+
 ## 1.1.1
 
 Adds **1.21.11**, and skips 1.21.9 and 1.21.10 on purpose.

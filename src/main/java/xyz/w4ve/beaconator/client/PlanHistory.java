@@ -4,8 +4,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import xyz.w4ve.beaconator.model.NodeData;
 import xyz.w4ve.beaconator.model.NodeKey;
-import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 
 /**
@@ -18,7 +18,7 @@ import xyz.w4ve.beaconator.model.PerimeterPlan;
 public final class PlanHistory {
 	private static final int MAX_STEPS = 64;
 
-	private record Step(String planName, Map<NodeKey, NodeStatus> before, String description) {
+	private record Step(String planName, Map<NodeKey, NodeData> before, String description) {
 	}
 
 	private static final Deque<Step> STEPS = new ArrayDeque<>();
@@ -45,10 +45,10 @@ public final class PlanHistory {
 			return;
 		}
 
-		Map<NodeKey, NodeStatus> before = new LinkedHashMap<>();
+		Map<NodeKey, NodeData> before = new LinkedHashMap<>();
 
 		for (NodeKey key : keys) {
-			before.put(key, plan.statusAt(key));
+			before.put(key, plan.dataAt(key));
 		}
 
 		if (before.isEmpty()) {
@@ -83,8 +83,18 @@ public final class PlanHistory {
 
 		Step step = STEPS.pop();
 
-		for (Map.Entry<NodeKey, NodeStatus> entry : step.before().entrySet()) {
-			PlanManager.changeStatus(entry.getKey(), entry.getValue());
+		for (Map.Entry<NodeKey, NodeData> entry : step.before().entrySet()) {
+			NodeKey key = entry.getKey();
+			NodeData data = entry.getValue();
+			PlanManager.changeStatus(key, data.status());
+
+			// Both halves go back, so undoing a drag puts the node where it was rather than
+			// leaving it parked wherever it was dropped with its old colour on.
+			int[] now = plan.offsetAt(key);
+
+			if (now[0] != data.dx() || now[1] != data.dz()) {
+				PlanManager.moveNode(key, data.dx(), data.dz());
+			}
 		}
 
 		PlanManager.markDirty();

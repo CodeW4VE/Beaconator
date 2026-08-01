@@ -10,8 +10,8 @@ import net.minecraft.world.phys.Vec3;
 import xyz.w4ve.beaconator.BeaconatorClient;
 import xyz.w4ve.beaconator.config.BeaconatorConfig;
 import xyz.w4ve.beaconator.io.PlanStore;
-import xyz.w4ve.beaconator.model.GridGenerator;
 import xyz.w4ve.beaconator.client.net.ClientSync;
+import xyz.w4ve.beaconator.client.scan.ScanCache;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
@@ -61,6 +61,23 @@ public final class PlanManager {
 		plan.setStatus(key, status);
 		dirty = true;
 		ClientSync.sendNode(key, status);
+	}
+
+	/**
+	 * The one way a node moves off the grid, for the same reason {@link #changeStatus} is the one
+	 * way it changes state: a second path would leave the node in a different place for everyone
+	 * else, which is worse than not moving it at all.
+	 */
+	public static void moveNode(NodeKey key, int dx, int dz) {
+		if (plan == null) {
+			return;
+		}
+
+		plan.setOffsetAt(key, dx, dz);
+		int[] applied = plan.offsetAt(key);
+		dirty = true;
+		ScanCache.invalidate(key);
+		ClientSync.sendMove(key, applied[0], applied[1]);
 	}
 
 	public static void closePlan() {
@@ -193,13 +210,7 @@ public final class PlanManager {
 			return null;
 		}
 
-		NodeKey key = GridGenerator.nearestKey(plan.centerX(), plan.centerZ(), plan.spacing(), hit.x, hit.z);
-
-		if (!plan.extents().contains(key.i(), key.j())) {
-			return null;
-		}
-
-		return key;
+		return plan.keyNear(hit.x, hit.z);
 	}
 
 	private static Vec3 aimPoint(LocalPlayer player) {

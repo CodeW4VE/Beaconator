@@ -138,6 +138,8 @@ public final class PlanStore {
 			node.status = entry.getValue().status().name();
 			node.beacons = entry.getValue().beacons();
 			node.y = entry.getValue().y();
+			node.dx = entry.getValue().dx();
+			node.dz = entry.getValue().dz();
 			dto.nodes.put(entry.getKey().toString(), node);
 		}
 
@@ -190,7 +192,8 @@ public final class PlanStore {
 				}
 
 				NodeStatus status = node.status == null ? NodeStatus.PENDING : NodeStatus.valueOf(node.status);
-				plan.putOverride(NodeKey.parse(entry.getKey()), new NodeData(status, node.beacons, node.y));
+				plan.putOverride(NodeKey.parse(entry.getKey()),
+						new NodeData(status, node.beacons, node.y, node.dx, node.dz));
 			}
 		}
 
@@ -219,5 +222,8 @@ public final class PlanStore {
 		String status;
 		Integer beacons;
 		Integer y;
+		/** Offset off the grid. Absent in plans written before nodes could be moved, so 0. */
+		int dx;
+		int dz;
 	}
 }
