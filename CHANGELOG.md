@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 - **A node can be moved on its own.** Some node always lands where a beacon cannot go, and until
   now the only answer was to nudge the whole grid and move the other two hundred with it. Turn
@@ -11,6 +11,21 @@
   Moved nodes travel to the rest of the team on a shared plan like any other change.
 - A node moved off its row is left out of the water network rather than dragging that row's
   channel across the perimeter to reach it. It still gets its beacons and its pyramid.
+
+## 1.2.0
+
+- **The scan stopped unbuilding the plan.** A scan that could not find the beacons of a node used
+  to downgrade it from placed back to pending, rewriting the plan as chunks arrived and losing the
+  green for good. A node that reads as empty is far more often a plan pointed at the wrong spot
+  than a dismantled perimeter, so the progress colour says so instead and the plan is left alone.
+  Unloaded chunks no longer overwrite the last real reading either, and hovering a node shows what
+  the scan actually saw.
+- **A master switch**, for when you want the mod installed and quiet.
+- **Marking one node no longer greys out every other one.** A click wiped the whole scan cache, so
+  every finished node lost its progress colour at once; only the node you touched is stale now.
+- The water network of a perimeter is modelled and costed underneath: the channels that carry what
+  you throw in at a beacon to a sorter, on the one layer left free between the pyramid bases.
+  Nothing surfaces it in the screen yet.
 
 ## 1.1.1
 
