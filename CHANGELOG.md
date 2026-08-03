@@ -1,5 +1,72 @@
 # Changelog
 
+## 2.0.0
+
+**The water lines.** A perimeter is only half the build: the other half is the channels that carry
+what you throw in at a beacon to the digsort in the middle. The mod now plans them, and it has its
+own page for it.
+
+- **A Water page**, not a ninth tab. Nine tabs did not fit in one row, and the water lines are not
+  a ninth setting of the same thing anyway: they are the perimeter seen from underneath. Press
+  **Water >** at the end of the tab row and the whole screen turns the page, to **Currents** (the
+  map you draw on), **Setup** (drain, shape, ice, how far a source carries, colours) and **Cost**
+  (the whole bill). **< Beacons** brings you back.
+- **Its own map.** Same view as the beacons map, so turning the page keeps you
+  looking at the same piece of the world, but the nodes step back and the channels come forward:
+  a run one block wide has no chance against a hundred coverage boxes at full strength. The
+  beacons themselves are drawn bigger rather than dimmer, and every pyramid **base** is outlined,
+  because those are what the channel has to fit between.
+- **The first time you open it, it says who this is for.** This part of the mod assumes you are
+  building a digsort, and anybody who is not deserves to be told so once rather than left to work
+  it out from a screen full of jargon. Once, and then never again; there is a button on the tab to
+  read it back.
+- **Excluded nodes get no channel.** They are outside the perimeter: nobody throws shulkers in at
+  one, so running ice out to them was digging for nothing. They are still drawn and still avoided,
+  because their pyramid sits on the channel's own layer. On a real perimeter with nineteen of them
+  that is 1,700 blocks of channel and nine shulkers of ice saved.
+- **Generate**, and you get the whole network worked out from the plan: one spine per row, one
+  trunk to the drain, every run a block clear of every pyramid base. The shape is a fishbone
+  because what is being optimised is the trip and not the bill: every item travels its own exact
+  Manhattan distance to the middle around a single corner, which nothing without diagonals beats.
+  The tree shape is a button away for the perimeters where it wins.
+- **Draw your own.** Turn Draw on and drag: runs are one block wide and snap to the axis, right
+  click erases one whether Draw is on or not. What is on the map is what gets built, so a run you
+  draw is not an override sitting on top of a calculation. That is also why **Generate throws away
+  what you drew**, and asks first when there is anything to lose.
+- **You point at the drain.** The middle of a grid is not a place: it is usually inside the centre
+  node's own pyramid, and the sorter is wherever it actually got built. Aim at the block the water
+  leaves by, open the screen, press the button.
+- **The count, in the Materials tab**: channel, ice, buckets, pressure plates, junctions, and the
+  shulkers of ice you actually have to mine, which is nine times the ice you place for packed and
+  eighty one for blue. On a real hundred node perimeter that is the difference between a weekend
+  and a fantasy, and it is better to know before the first block goes in.
+- **It tells you what is wrong rather than refusing.** A run dug through a pyramid base is drawn in
+  red, a node the channel never reaches gets a cross, and a network that does not join up says how
+  many nodes are stranded. Your call, every time.
+- The channels are drawn in the world at the layer they will be dug on, so you can stand in the
+  hole and see where the next one goes. Toggle and colour on the Display tab.
+- The water lines are saved with the plan and travel with it: opening a shared plan brings its
+  channels, and editing them on a shared plan sends them up when you close the screen.
+
+- **The channel reads itself back out of the world.** Every block of it is scanned as you get near,
+  the same way the pyramids are, and drawn by what it is waiting for: cyan is still solid rock,
+  yellow is dug out with no ice under it, green is floored and waiting for water, and **a stretch
+  with water in it stops being drawn at all**. So the map empties as the thing gets built, and the
+  line that is left is the work that is left. Blocks too far away to read are never counted as
+  missing.
+- **Erasing takes out the stretch between crossings**, not the whole eight hundred block spine.
+- **A node whose beacon already has water on it gets a ring** on the currents map: that is the drop
+  into the channel working, and it is the one part of it that can be checked from a distance.
+- **Sources and plates can be shown** (Setup, off by default): a source at the head of each run and
+  every few blocks after it, a stop where each run flows into another. Marked as a proposal
+  everywhere it appears, because nothing about those positions has been checked against a channel
+  that runs. Dig one stretch, see what the water really does, then trust them.
+- **The channel's Y is yours to set**, not fixed at the bottom layer.
+
+Not in this release, on purpose: the network does not export to a litematic yet, and the water
+sources and pressure plates are counted rather than placed. Those are the parts a compiler cannot
+check, and they wait until the shape has been dug in a real world.
+
 ## 1.3.0
 
 - **A node can be moved on its own.** Some node always lands where a beacon cannot go, and until

@@ -54,8 +54,10 @@ public final class PerimeterRenderer {
 			return;
 		}
 
+		// The water lines are their own answer to "is there anything to draw": they live under the
+		// perimeter and stand on their own, so having every overlay off must not take them with it.
 		if (!config.renderCoverage && !config.renderWireframe && !config.renderBeaconMarkers
-				&& !config.showBeams) {
+				&& !config.showBeams && !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -74,7 +76,9 @@ public final class PerimeterRenderer {
 
 		List<GridNode> visible = cull(plan, nodes, mc, config, context.frustum());
 
-		if (visible.isEmpty()) {
+		// Not "and no water": a perimeter you are standing in the middle of has no node on screen
+		// and its channels still run under your feet.
+		if (visible.isEmpty() && !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -110,7 +114,8 @@ public final class PerimeterRenderer {
 			BeaconatorConfig config, Matrix4f matrix) {
 		// Beams and gap strips are their own settings and do not belong to the coverage volumes.
 		// They used to live behind this check, so turning the coverage off took the beams with it.
-		if (!config.renderCoverage && !config.showBeams && !plan.hasCoverageGaps()) {
+		if (!config.renderCoverage && !config.showBeams && !plan.hasCoverageGaps()
+				&& !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -145,6 +150,7 @@ public final class PerimeterRenderer {
 
 		any |= drawBeams(plan, nodes, mc, config, matrix, buffer);
 		any |= drawGapStrips(plan, nodes, mc, config, matrix, buffer);
+		any |= WaterRenderer.emitFaces(plan, config, matrix, buffer);
 
 		MeshData mesh = buffer.build();
 
@@ -303,7 +309,8 @@ public final class PerimeterRenderer {
 
 	private static void drawLines(PerimeterPlan plan, List<GridNode> nodes, Minecraft mc,
 			BeaconatorConfig config, Matrix4f matrix) {
-		if (!config.renderWireframe && !config.renderBeaconMarkers && !config.renderPyramidFootprint) {
+		if (!config.renderWireframe && !config.renderBeaconMarkers && !config.renderPyramidFootprint
+				&& !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -364,6 +371,8 @@ public final class PerimeterRenderer {
 				any = true;
 			}
 		}
+
+		any |= WaterRenderer.emitLines(plan, config, matrix, buffer);
 
 		MeshData mesh = buffer.build();
 

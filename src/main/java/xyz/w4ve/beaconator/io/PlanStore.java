@@ -19,6 +19,10 @@ import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.model.RowAxis;
+import xyz.w4ve.beaconator.model.water.WaterLayout;
+import xyz.w4ve.beaconator.model.water.WaterPlan;
+import xyz.w4ve.beaconator.model.water.WaterSegment;
+import xyz.w4ve.beaconator.model.water.WaterSpec;
 
 /**
  * Reads and writes plans under {@code config/beaconator/&lt;world&gt;/&lt;name&gt;.json}.
@@ -131,6 +135,7 @@ public final class PlanStore {
 		dto.markerBlock = plan.markerBlock();
 		dto.innerCapBlock = plan.innerCapBlock();
 		dto.placeMarker = plan.placeMarker();
+		dto.water = toWaterDto(plan.water());
 		dto.nodes = new LinkedHashMap<>();
 
 		for (Map.Entry<NodeKey, NodeData> entry : plan.overrides().entrySet()) {
@@ -182,6 +187,7 @@ public final class PlanStore {
 		}
 
 		plan.setPlaceMarker(dto.placeMarker);
+		readWater(dto.water, plan.water());
 
 		if (dto.nodes != null) {
 			for (Map.Entry<String, NodeDto> entry : dto.nodes.entrySet()) {
@@ -200,6 +206,76 @@ public final class PlanStore {
 		return plan;
 	}
 
+	// ------------------------------------------------------------------ water
+
+	private static WaterDto toWaterDto(WaterPlan water) {
+		// Nothing planned means nothing written, so a plan from before this existed and one where
+		// nobody wants water lines look the same on disk.
+		if (water == null || water.isEmpty()) {
+			return null;
+		}
+
+		WaterSpec spec = water.spec();
+		WaterDto dto = new WaterDto();
+		dto.layout = spec.layout().name();
+		dto.y = spec.y();
+		dto.rowStep = spec.rowStep();
+		dto.iceBlock = spec.iceBlock();
+		dto.sourceEvery = spec.sourceEvery();
+		dto.drain = spec.sink() == null ? null : new int[] {spec.sink().x(), spec.sink().z()};
+		dto.edited = water.edited();
+		dto.runs = new ArrayList<>();
+
+		for (WaterSegment run : water.runs()) {
+			dto.runs.add(new int[] {run.x1(), run.z1(), run.x2(), run.z2(), run.kind().ordinal()});
+		}
+
+		return dto;
+	}
+
+	private static void readWater(WaterDto dto, WaterPlan water) {
+		if (dto == null) {
+			return;
+		}
+
+		WaterSpec spec = WaterSpec.defaults();
+
+		if (dto.layout != null) {
+			spec = spec.with(WaterLayout.valueOf(dto.layout));
+		}
+
+		if (dto.iceBlock != null) {
+			spec = spec.withIce(dto.iceBlock);
+		}
+
+		spec = new WaterSpec(spec.layout(), dto.y == 0 ? WaterSpec.BOTTOM_LAYER : dto.y,
+				Math.max(1, dto.rowStep), spec.iceBlock(), Math.max(1, dto.sourceEvery), null);
+
+		if (dto.drain != null && dto.drain.length == 2) {
+			spec = spec.drainingAt(dto.drain[0], dto.drain[1]);
+		}
+
+		water.setSpec(spec);
+
+		if (dto.runs != null) {
+			WaterSegment.Kind[] kinds = WaterSegment.Kind.values();
+
+			for (int[] run : dto.runs) {
+				if (run == null || run.length < 4) {
+					continue;
+				}
+
+				int kind = run.length > 4 ? Math.clamp(run[4], 0, kinds.length - 1) : 0;
+				water.add(new WaterSegment(run[0], run[1], run[2], run[3], kinds[kind]));
+			}
+		}
+
+		if (!dto.edited) {
+			// add() marks the plan as touched by hand, which is only true of what came in that way.
+			water.clearEditedFlag();
+		}
+	}
+
 	/** On disk shape of a plan. Kept separate so the model stays free of serialization concerns. */
 	static class PlanDto {
 		String name;
@@ -215,7 +291,21 @@ public final class PlanStore {
 		String markerBlock;
 		String innerCapBlock;
 		boolean placeMarker;
+		WaterDto water;
 		Map<String, NodeDto> nodes;
+	}
+
+	/** The water lines. Absent in every plan written before they existed, which reads as none. */
+	static class WaterDto {
+		String layout;
+		int y;
+		int rowStep;
+		String iceBlock;
+		int sourceEvery;
+		int[] drain;
+		boolean edited;
+		/** One run as {@code x1, z1, x2, z2, kind}, which is small enough to read in the file. */
+		List<int[]> runs;
 	}
 
 	static class NodeDto {

@@ -42,6 +42,125 @@ public final class Lang {
 		put("tab.keys", "Keys", "Teclas");
 		put("tab.display", "Display", "Pantalla");
 		put("tab.shared", "Server", "Servidor");
+		put("tab.water_map", "Currents", "Corrientes");
+		put("tab.water_setup", "Setup", "Ajustes");
+		put("tab.water_cost", "Cost", "Coste");
+		put("section.to_water", "Water", "Agua");
+		put("section.to_beacons", "Beacons", "Beacons");
+		put("section.water_tip", "The water lines that carry what you throw in at a beacon to the digsort",
+				"Las corrientes que llevan lo que tirás en un beacon hasta el digsort");
+		put("section.beacons_tip", "Back to the perimeter itself", "Volver al perímetro");
+
+		// water: the one time explanation. Everything else in the mod assumes you want beacons;
+		// this part assumes you are building a digsort, and that is worth saying out loud once.
+		put("water.intro_title", "Water lines: what this is for",
+				"Corrientes de agua: para qué es esto");
+		put("water.intro_what", "This part of the mod is aimed at the technical crowd. What we do "
+				+ "is run water streams from the beacons to a digsort in the middle, so you throw "
+				+ "your shulkers in at any beacon and they end up in the sorter on their own.",
+				"Esta parte del mod es para la gente técnica. Lo que hacemos es llevar corrientes "
+				+ "de agua de los beacons a un digsort en el medio, así tirás las shulkers en "
+				+ "cualquier beacon y terminan solas en el sorter.");
+		put("water.intro_who", "If that is not what you are building, and you are never making a "
+				+ "digsort, this section is useless to you. No harm done: everything else in the "
+				+ "mod works exactly the same without it.",
+				"Si no es lo que estás construyendo, y nunca vas a hacer un digsort, esta sección "
+				+ "no te sirve de nada. Tranquilo: todo lo demás del mod funciona exactamente "
+				+ "igual sin ella.");
+		put("water.intro_ok", "Got it", "Entendido");
+		put("water.intro_again", "Read that again", "Leerlo otra vez");
+
+		// water: the tab itself
+		put("water.generate", "Generate", "Generar");
+		put("water.regenerate", "Regenerate", "Regenerar");
+		put("water.confirm_generate", "That replaces the %d runs you drew. Press it again to go ahead",
+				"Eso reemplaza las %d líneas que dibujaste. Apretalo otra vez para seguir");
+		put("water.generated", "%d runs, %s blocks of channel", "%d líneas, %s bloques de canal");
+		put("water.draw_on", "Draw: on", "Dibujar: sí");
+		put("water.draw_off", "Draw: off", "Dibujar: no");
+		put("water.clear", "Clear all", "Borrar todo");
+		put("water.confirm_clear", "Press again to throw away all %d runs",
+				"Apretá otra vez para tirar las %d líneas");
+		put("water.cleared", "Water lines cleared", "Corrientes borradas");
+		put("water.drain_here", "Drain: look at it", "Desagüe: mirálo");
+		put("water.drain_set", "Draining at %d, %d", "Desagüe en %d, %d");
+		put("water.drain_none", "Draining at the middle of the grid (nothing picked yet)",
+				"Desagüe en el medio de la retícula (todavía sin elegir)");
+		put("water.drain_look", "Look at the block the water leaves by, then press it again",
+				"Mirá el bloque por donde sale el agua y apretá otra vez");
+		put("water.layout_fishbone", "Shape: fishbone", "Forma: espina");
+		put("water.layout_tree", "Shape: tree", "Forma: árbol");
+		put("water.ice", "Ice: %s", "Hielo: %s");
+		put("water.empty", "No water lines yet. Generate one, or draw it yourself.",
+				"Todavía no hay corrientes. Generá una, o dibujala vos.");
+		put("water.hint_draw", "Left drag draws, right click erases up to the nearest crossing, middle drag pans",
+				"Arrastrar izq dibuja, click der borra hasta el cruce más cercano, la rueda mueve");
+		put("water.hint_look", "Drag to pan, right click erases up to the nearest crossing, Draw adds",
+				"Arrastrá para mover, click der borra hasta el cruce más cercano, Dibujar agrega");
+		put("water.drew", "Run of %d blocks", "Línea de %d bloques");
+		put("water.erased", "%d blocks of channel erased", "%d bloques de canal borrados");
+		put("water.nothing_there", "No run under there", "No hay ninguna línea ahí");
+		put("water.stats", "%s channel  ·  %s %s (%d shulkers)  ·  longest trip %s",
+				"%s de canal  ·  %s %s (%d shulkers)  ·  viaje más largo %s");
+		put("water.stats2", "%d nodes served, %d without a line  ·  %d buckets, %d plates, %d junctions",
+				"%d nodos servidos, %d sin línea  ·  %d cubos, %d placas, %d cruces");
+		put("water.blocked", "%d runs go straight through a pyramid base",
+				"%d líneas pasan por encima de una base de pirámide");
+		put("water.disconnected", "%d nodes have a line that does not reach the middle",
+				"%d nodos tienen línea pero no llega al medio");
+		put("water.ideal", "Longest trip is %d blocks over the best a straight channel could do",
+				"El viaje más largo se pasa %d bloques del mejor posible");
+		put("water.ideal_perfect", "Every trip is as short as a channel can make it",
+				"Cada viaje es lo más corto que un canal puede dar");
+		put("water.materials", "Water lines", "Corrientes de agua");
+		put("water.orphans", "%d nodes have no line to the middle yet",
+				"%d nodos todavía no tienen línea al medio");
+		put("water.progress", "%s flowing  ·  %s iced  ·  %s dug  ·  %s still solid",
+				"%s con agua  ·  %s con hielo  ·  %s picado  ·  %s sin picar");
+		put("water.progress_note", "%s blocks are too far away to read, so they are not counted",
+				"%s bloques están demasiado lejos para leerlos, así que no se cuentan");
+		put("water.fittings", "Sources and plates", "Fuentes y placas");
+		put("water.fittings_note", "Source and plate positions are a proposal until a stretch is built",
+				"Las posiciones de fuentes y placas son una propuesta hasta que se cave un tramo");
+		put("water.fed", "This beacon already has water on it", "Este beacon ya tiene agua encima");
+		put("water.all_served", "All %d nodes have a line to the middle",
+				"Los %d nodos tienen línea al medio");
+		put("water.colour", "Channel", "Canal");
+		put("water.colour_bad", "Bad run", "Línea mala");
+		put("water.colour_drain", "Drain", "Desagüe");
+		put("water.source_every", "Source every", "Fuente cada");
+		put("water.channel_y", "Channel Y", "Y del canal");
+		put("water.row_step", "Every nth row", "Una fila de cada");
+		put("water.drain_tip", "Aim at the block the water leaves the sorter by, then press this",
+				"Apuntá al bloque por donde el agua sale del sorter y apretá esto");
+		put("water.layout_tip", "Fishbone: one spine per row into one trunk, every item takes the "
+				+ "shortest trip there is. Tree: shorter to build, much slower to ride",
+				"Espina: una espina por fila a un tronco, cada ítem hace el viaje más corto que hay. "
+				+ "Árbol: menos canal, pero mucho más lento");
+		put("water.ice_tip", "What goes under the water. Packed ice is nine ice each, blue ice is "
+				+ "eighty one, and neither changes how fast an item goes",
+				"Lo que va bajo el agua. El packed ice son nueve hielos cada uno, el blue ice "
+				+ "ochenta y uno, y ninguno cambia lo rápido que va un ítem");
+		put("water.layer", "Ice floor on y=%d, water on y=%d", "Piso de hielo en y=%d, agua en y=%d");
+		put("water.layer_bottom", "which is the deepest layer there is, where the bases already are",
+				"que es la capa más honda que hay, donde ya están las bases");
+		put("water.layer_high", "the pyramid bases are on y=%d, so mind what the channel crosses",
+				"las bases de las pirámides están en y=%d, ojo con lo que cruza el canal");
+		put("water.setup_hint", "Excluded nodes get no channel: they are outside the perimeter",
+				"Los nodos excluidos no llevan canal: están fuera del perímetro");
+		put("water.cost_mine", "%s %s to mine, %d shulkers of it",
+				"%s %s por picar, %d shulkers de eso");
+		put("water.cost_channel", "%s blocks of channel, %s blocks to dig out",
+				"%s bloques de canal, %s bloques por excavar");
+		put("water.cost_trip", "Longest trip %s blocks, average %s, %d corners at worst",
+				"Viaje más largo %s bloques, promedio %s, %d esquinas en el peor caso");
+		put("water.cost_nodes", "%d nodes served, %d without a line, %d excluded and left out",
+				"%d nodos servidos, %d sin línea, %d excluidos y fuera");
+		put("water.cost_flow", "%d water buckets, %d pressure plates, %d junctions",
+				"%d cubos de agua, %d placas de presión, %d cruces");
+		put("water.see_cost", "Water lines: %s channel, %d shulkers of ice. Water > Cost has the rest",
+				"Corrientes: %s de canal, %d shulkers de hielo. El resto en Agua > Coste");
+		put("water.show", "Show in world", "Ver en el mundo");
 
 		// shared
 		put("done", "Done", "Listo");

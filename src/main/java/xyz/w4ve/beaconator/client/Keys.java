@@ -263,6 +263,7 @@ public final class Keys {
 
 		PlanManager.tick(mc);
 		ScanCache.tick(mc);
+		xyz.w4ve.beaconator.client.water.WaterScan.tick(mc);
 		EasyPlace.tick(mc);
 		MapStore.tick(mc);
 		LitematicaBridge.tick();

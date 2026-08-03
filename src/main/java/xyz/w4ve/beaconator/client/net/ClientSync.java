@@ -189,6 +189,18 @@ public final class ClientSync {
 		return true;
 	}
 
+	/**
+	 * Sends the open plan again, but only if it is the shared one and somebody is listening.
+	 *
+	 * <p>What this is for is the water lines. Marking a node has a delta packet of its own because
+	 * it happens hundreds of times an evening; drawing a channel does not, and giving it one would
+	 * be a fourth payload to keep in step for something that happens while you are sat in a screen.
+	 * So the whole plan goes up once, when that screen closes.
+	 */
+	public static boolean resend() {
+		return shared() && !applying && share();
+	}
+
 	/** Takes a plan off the server. Everyone keeps whatever they have open. */
 	public static boolean remove(String name) {
 		if (!connected()) {

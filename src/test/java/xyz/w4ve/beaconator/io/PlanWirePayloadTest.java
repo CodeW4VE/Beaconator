@@ -9,6 +9,7 @@ import xyz.w4ve.beaconator.model.GridExtents;
 import xyz.w4ve.beaconator.model.NodeKey;
 import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.model.water.WaterSpec;
 
 /**
  * The plan travels to other players as the JSON of {@link PlanStore}. If a round trip drops
@@ -26,6 +27,33 @@ class PlanWirePayloadTest {
 		plan.setStatus(new NodeKey(-1, 2), NodeStatus.EXCLUDED);
 		plan.setStatus(new NodeKey(2, -2), NodeStatus.REMOVED);
 		return plan;
+	}
+
+	@Test
+	void theWaterLinesTravelWithThePlan() {
+		PerimeterPlan sent = sample();
+		sent.water().setSpec(sent.water().spec().drainingAt(612, 700).withIce(WaterSpec.BLUE_ICE));
+		sent.water().generate(sent);
+		int runs = sent.water().runs().size();
+		int channel = sent.water().network(sent).channelBlocks();
+
+		PerimeterPlan got = PlanStore.fromJson(PlanStore.toJson(sent), "shared");
+
+		assertNotNull(got);
+		assertEquals(runs, got.water().runs().size());
+		assertEquals(channel, got.water().network(got).channelBlocks());
+		assertEquals(WaterSpec.BLUE_ICE, got.water().spec().iceBlock());
+		assertNotNull(got.water().spec().sink());
+		assertEquals(612, got.water().spec().sink().x());
+		assertEquals(700, got.water().spec().sink().z());
+	}
+
+	@Test
+	void aPlanWithoutWaterStaysWithoutIt() {
+		PerimeterPlan got = PlanStore.fromJson(PlanStore.toJson(sample()), "shared");
+
+		assertNotNull(got);
+		assertEquals(0, got.water().runs().size());
 	}
 
 	@Test

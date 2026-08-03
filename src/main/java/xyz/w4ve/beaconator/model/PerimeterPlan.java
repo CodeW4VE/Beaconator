@@ -42,6 +42,17 @@ public final class PerimeterPlan {
 
 	private final Map<NodeKey, NodeData> overrides = new HashMap<>();
 
+	/**
+	 * The water network that carries what you throw in at a beacon to the digsort in the middle.
+	 *
+	 * <p>Part of the plan rather than a file of its own: it is the same perimeter seen from
+	 * underneath, it is saved, shared and opened with the plan, and a network that could drift out
+	 * of step with the grid it serves would be worse than no network at all. Empty until somebody
+	 * asks for one, and empty is free.
+	 */
+	private final xyz.w4ve.beaconator.model.water.WaterPlan water =
+			new xyz.w4ve.beaconator.model.water.WaterPlan();
+
 	public PerimeterPlan(String name, String dimension, int centerX, int beaconY, int centerZ) {
 		this.name = name;
 		this.dimension = dimension;
@@ -49,6 +60,11 @@ public final class PerimeterPlan {
 		this.beaconY = beaconY;
 		this.centerZ = centerZ;
 		this.spacing = CoverageBox.sideFor(level);
+	}
+
+	/** The water lines of this perimeter. Never null; empty means nobody has planned them yet. */
+	public xyz.w4ve.beaconator.model.water.WaterPlan water() {
+		return water;
 	}
 
 	// ---------------------------------------------------------------- settings

@@ -215,4 +215,41 @@ class WaterNetworkTest {
 		assertEquals(0, budget.longestRun());
 		assertFalse(budget.summary().isBlank());
 	}
+	@Test
+	@DisplayName("Excluded nodes get no channel, and the channel still misses their bases")
+	void excludedNodesAreOutsideTheNetwork() {
+		for (WaterLayout layout : WaterLayout.values()) {
+			PerimeterPlan plan = plan(2);
+			plan.setStatus(new NodeKey(0, -2), NodeStatus.EXCLUDED);
+			plan.setStatus(new NodeKey(1, -2), NodeStatus.EXCLUDED);
+			plan.setStatus(new NodeKey(-2, 1), NodeStatus.EXCLUDED);
+			WaterNetwork network = WaterNetwork.of(plan, WaterSpec.defaults().with(layout));
+
+			assertFalse(network.distances().containsKey(new NodeKey(0, -2)),
+					layout + " ran water to a node that is outside the perimeter");
+			assertFalse(network.orphans().contains(new NodeKey(0, -2)),
+					layout + " called an excluded node stranded, which it is not");
+			assertEquals(plan.buildNodes().size() - 3, network.distances().size(),
+					layout + " served the wrong number of nodes");
+			assertTrue(network.blockedByPyramids().isEmpty(),
+					layout + " dug through a base it stopped serving");
+		}
+	}
+
+	@Test
+	@DisplayName("A whole row of excluded nodes is left out without cutting the rest off")
+	void anExcludedRowIsSkipped() {
+		PerimeterPlan plan = plan(1);
+
+		for (int i = -1; i <= 1; i++) {
+			plan.setStatus(new NodeKey(i, -1), NodeStatus.EXCLUDED);
+		}
+
+		WaterNetwork network = WaterNetwork.of(plan, WaterSpec.defaults());
+
+		assertEquals(6, network.distances().size(), "the other two rows are still served");
+		assertTrue(network.blockedByPyramids().isEmpty(), "the trunk still misses the excluded row");
+		assertTrue(network.disconnected().isEmpty(), "and everything served still reaches the middle");
+	}
+
 }

@@ -38,6 +38,9 @@ public final class PlanManager {
 	}
 
 	public static void setPlan(PerimeterPlan newPlan) {
+		// The channel readings belong to the plan they were read for, and so does the water cache.
+		xyz.w4ve.beaconator.client.water.WaterScan.clear();
+		xyz.w4ve.beaconator.client.water.WaterCache.invalidate();
 		plan = newPlan;
 		hovered = null;
 		dirty = true;

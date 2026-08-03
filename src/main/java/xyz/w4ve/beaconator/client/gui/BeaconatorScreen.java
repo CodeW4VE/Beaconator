@@ -23,7 +23,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import xyz.w4ve.beaconator.BeaconatorClient;
 import xyz.w4ve.beaconator.client.Keys;
 import xyz.w4ve.beaconator.client.Lang;
@@ -52,6 +55,15 @@ import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.model.PyramidCalculator;
 import xyz.w4ve.beaconator.model.RowAxis;
+import xyz.w4ve.beaconator.client.water.ChannelState;
+import xyz.w4ve.beaconator.client.water.WaterCache;
+import xyz.w4ve.beaconator.client.water.WaterScan;
+import xyz.w4ve.beaconator.model.water.WaterBudget;
+import xyz.w4ve.beaconator.model.water.WaterLayout;
+import xyz.w4ve.beaconator.model.water.WaterNetwork;
+import xyz.w4ve.beaconator.model.water.WaterPlan;
+import xyz.w4ve.beaconator.model.water.WaterSegment;
+import xyz.w4ve.beaconator.model.water.WaterSpec;
 import xyz.w4ve.beaconator.net.PlanListPayload;
 
 /**
@@ -59,20 +71,40 @@ import xyz.w4ve.beaconator.net.PlanListPayload;
  * things: the commands stay around for scripting and for anyone who prefers typing.
  */
 public class BeaconatorScreen extends Screen {
+	/**
+	 * The screen is two pages, not one row of nine tabs.
+	 *
+	 * <p>Nine did not fit: at any normal gui scale the row ran off both edges of the screen. And
+	 * the water lines are not a ninth setting of the same thing anyway, they are the perimeter seen
+	 * from underneath, with their own map, their own settings and their own bill. So they get a
+	 * page of their own, reached by an arrow at the end of the row, and each page keeps its tabs
+	 * down to a number that fits.
+	 */
+	private enum Section {
+		BEACONS,
+		WATER
+	}
+
 	private enum Tab {
-		MAP("tab.map"),
-		PLAN("tab.plan"),
-		GRID("tab.grid"),
-		BLOCKS("tab.blocks"),
-		MATERIALS("tab.materials"),
-		SHARED("tab.shared"),
-		KEYS("tab.keys"),
-		DISPLAY("tab.display");
+		MAP("tab.map", Section.BEACONS),
+		PLAN("tab.plan", Section.BEACONS),
+		GRID("tab.grid", Section.BEACONS),
+		BLOCKS("tab.blocks", Section.BEACONS),
+		MATERIALS("tab.materials", Section.BEACONS),
+		SHARED("tab.shared", Section.BEACONS),
+		KEYS("tab.keys", Section.BEACONS),
+		DISPLAY("tab.display", Section.BEACONS),
+
+		WATER_MAP("tab.water_map", Section.WATER),
+		WATER_SETUP("tab.water_setup", Section.WATER),
+		WATER_COST("tab.water_cost", Section.WATER);
 
 		private final String key;
+		private final Section section;
 
-		Tab(String key) {
+		Tab(String key, Section section) {
 			this.key = key;
+			this.section = section;
 		}
 	}
 
@@ -100,6 +132,9 @@ public class BeaconatorScreen extends Screen {
 
 	private static Tab activeTab = Tab.MAP;
 	private static final MapView MAP_VIEW = new MapView();
+	/** Left click draws a channel instead of panning the map. Off by default: panning is what you
+	 * do most, and a map you cannot drag without drawing on it is a trap. */
+	private static boolean waterDraw;
 
 	private final Screen parent;
 	private final List<Label> labels = new ArrayList<>();
@@ -107,6 +142,11 @@ public class BeaconatorScreen extends Screen {
 	private int statusColor = DIM_COLOR;
 	private boolean dragging;
 	private KeyMapping listeningFor;
+	/** Both of these are "press it again and I mean it", for the two buttons that destroy work. */
+	private boolean confirmGenerate;
+	private boolean confirmClear;
+	/** Water lines were touched while this screen was open, so the server wants to hear about it. */
+	private boolean waterTouched;
 
 	private EditBox nameBox;
 	private EditBox pyramidBox;
@@ -136,28 +176,47 @@ public class BeaconatorScreen extends Screen {
 		List<Tab> tabs = new ArrayList<>();
 
 		for (Tab tab : Tab.values()) {
-			if (tab != Tab.SHARED || ClientSync.connected()) {
+			if (tab.section == activeTab.section && (tab != Tab.SHARED || ClientSync.connected())) {
 				tabs.add(tab);
 			}
 		}
 
 		if (!tabs.contains(activeTab)) {
 			activeTab = Tab.MAP;
+			tabs.removeIf(tab -> tab.section != Section.BEACONS);
 		}
 
-		int tabWidth = Math.min(76, (width - 16) / tabs.size());
-		int tabsX = width / 2 - (tabs.size() * tabWidth) / 2;
+		// Both pages are on the bar, always, pinned to the two corners of the screen, and the one
+		// you are on is greyed out like the tab you are on. Pinned, not laid out with the tabs: the
+		// tab row is a different width on each page, so anything measured from it would shuffle
+		// sideways every time you turn the page, and these two are the buttons you aim at without
+		// looking. The tabs are centred between them.
+		int sideWidth = Math.min(96, Math.max(58, width / 9));
+		int room = width - (sideWidth + 8) * 2;
+		int tabWidth = Math.min(76, Math.max(30, room / tabs.size()));
+		int tabsX = Math.max(sideWidth + 8, width / 2 - tabs.size() * tabWidth / 2);
+
+		addRenderableWidget(sectionButton(4, "section.to_beacons", "section.beacons_tip",
+				sideWidth, Section.BEACONS, Tab.MAP));
 
 		for (int index = 0; index < tabs.size(); index++) {
 			Tab tab = tabs.get(index);
-			Button button = Button.builder(Lang.c(tab.key), b -> {
+			Button button = Button.builder(
+					Component.literal(fit(Lang.t(tab.key), tabWidth - 10)), b -> {
 				activeTab = tab;
 				listeningFor = null;
+				// "Press it again" only means anything while you are looking at the button that
+				// said it. Leaving the tab is as clear a no as pressing anything else.
+				confirmGenerate = false;
+				confirmClear = false;
 				rebuildWidgets();
 			}).bounds(tabsX + index * tabWidth, 6, tabWidth - 2, 20).build();
 			button.active = tab != activeTab;
 			addRenderableWidget(button);
 		}
+
+		addRenderableWidget(sectionButton(width - sideWidth - 4, "section.to_water",
+				"section.water_tip", sideWidth, Section.WATER, Tab.WATER_MAP));
 
 		addRenderableWidget(Button.builder(Lang.c("done"), button -> onClose())
 				.bounds(width / 2 - 50, height - 28, 100, 20).build());
@@ -179,9 +238,23 @@ public class BeaconatorScreen extends Screen {
 		boolean needsPlan = activeTab != Tab.PLAN && activeTab != Tab.DISPLAY
 				&& activeTab != Tab.KEYS && activeTab != Tab.SHARED;
 
+		// The water page keeps the beacons map's own view, so turning the page lands you looking at
+		// the same piece of the world rather than back at the whole perimeter.
+		MAP_VIEW.setWaterMode(activeTab == Tab.WATER_MAP);
+
+		// Before anything else on this page, and before it complains about there being no plan: the
+		// first thing somebody who turned the page needs is to be told whether this is for them.
+		if (activeTab.section == Section.WATER && !BeaconatorConfig.get().waterIntroSeen) {
+			initWaterIntro();
+			return;
+		}
+
 		if (!needsPlan || PlanManager.hasPlan()) {
 			switch (activeTab) {
 				case MAP -> initMap();
+				case WATER_MAP -> initWater();
+				case WATER_SETUP -> initWaterSetup();
+				case WATER_COST -> initWaterCost();
 				case PLAN -> initPlan();
 				case GRID -> initGrid();
 				case BLOCKS -> initBlocks();
@@ -193,6 +266,20 @@ public class BeaconatorScreen extends Screen {
 		} else {
 			label(width / 2, 60, () -> Lang.t("no_plan"), () -> WARN_COLOR, true);
 		}
+	}
+
+	/** One end of the tab bar: the page you are not on, or a greyed out reminder of the one you are. */
+	private Button sectionButton(int x, String key, String tip, int width, Section section, Tab landing) {
+		Button button = Button.builder(Component.literal(fit(Lang.t(key), width - 8)), b -> {
+			activeTab = landing;
+			listeningFor = null;
+			confirmGenerate = false;
+			confirmClear = false;
+			rebuildWidgets();
+		}).bounds(x, 6, width, 20).tooltip(Tooltip.create(Lang.c(tip))).build();
+
+		button.active = activeTab.section != section;
+		return button;
 	}
 
 	// --------------------------------------------------------------------- map
@@ -332,7 +419,9 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	private boolean overMap(double mouseX, double mouseY) {
-		return activeTab == Tab.MAP && PlanManager.hasPlan()
+		return (activeTab == Tab.MAP
+				|| (activeTab == Tab.WATER_MAP && BeaconatorConfig.get().waterIntroSeen))
+				&& PlanManager.hasPlan()
 				&& mouseX >= mapX() && mouseX <= mapX() + mapWidth()
 				&& mouseY >= mapY() && mouseY <= mapY() + mapHeight();
 	}
@@ -345,6 +434,10 @@ public class BeaconatorScreen extends Screen {
 
 		if (!overMap(mouseX, mouseY)) {
 			return false;
+		}
+
+		if (activeTab == Tab.WATER_MAP) {
+			return waterClicked(mouseX, mouseY, button);
 		}
 
 		PerimeterPlan plan = PlanManager.plan();
@@ -387,6 +480,12 @@ public class BeaconatorScreen extends Screen {
 
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+		if (MAP_VIEW.drawingRun()) {
+			int[] block = MAP_VIEW.blockAt(mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
+			MAP_VIEW.updateRun(block[0], block[1]);
+			return true;
+		}
+
 		if (MAP_VIEW.movingNode()) {
 			PerimeterPlan plan = PlanManager.plan();
 			int[] offset = MAP_VIEW.updateMove(plan, mouseX, mouseY,
@@ -415,6 +514,19 @@ public class BeaconatorScreen extends Screen {
 	@Override
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
 		dragging = false;
+
+		if (MAP_VIEW.drawingRun()) {
+			WaterSegment run = MAP_VIEW.endRun();
+
+			if (run != null) {
+				PlanManager.plan().water().add(run);
+				PlanManager.markDirty();
+				waterTouched = true;
+				setStatus(Lang.t("water.drew", run.length()), OK_COLOR);
+			}
+
+			return true;
+		}
 
 		if (MAP_VIEW.movingNode()) {
 			MAP_VIEW.endMove();
@@ -486,6 +598,503 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+	}
+
+	// ------------------------------------------------------------------- water
+
+	/**
+	 * The one time explanation, shown the first time this tab is opened and never again.
+	 *
+	 * <p>Every other tab of this mod is about beacons, and anybody who installed it wants beacons.
+	 * This one is about a thing only technical players build, so it says so plainly instead of
+	 * dropping somebody into a screen full of digsorts and shulkers and letting them work out that
+	 * none of it is aimed at them.
+	 */
+	private void initWaterIntro() {
+		// The button sits below however many lines the text wraps to, and Spanish is a third longer
+		// than English, so the height is measured rather than guessed.
+		addRenderableWidget(Button.builder(Lang.c("water.intro_ok"), button -> {
+			BeaconatorConfig.get().waterIntroSeen = true;
+			BeaconatorConfig.get().save();
+			rebuildWidgets();
+		}).bounds(width / 2 - 60, introBottom() + 20, 120, 20).build());
+	}
+
+	/** How wide the intro paragraphs are allowed to be, and where they end. */
+	private int introWidth() {
+		return Math.min(width - 40, 360);
+	}
+
+	private int introBottom() {
+		int lines = font.split(Component.literal(Lang.t("water.intro_what")), introWidth()).size()
+				+ font.split(Component.literal(Lang.t("water.intro_who")), introWidth()).size();
+		return 66 + lines * 11 + 10;
+	}
+
+	/**
+	 * The one time explanation, wrapped to whatever width the screen has.
+	 *
+	 * <p>Every other tab of this mod is about beacons, and anybody who installed it wants beacons.
+	 * This one is about a thing only technical players build, so it says so plainly instead of
+	 * dropping somebody into a screen full of digsorts and shulkers and letting them work out that
+	 * none of it is aimed at them.
+	 */
+	private void renderWaterIntro(GuiGraphics graphics) {
+		int room = introWidth();
+		int left = width / 2 - room / 2;
+		graphics.drawCenteredString(font, Lang.t("water.intro_title"), width / 2, 44, LABEL_COLOR);
+
+		int y = 66;
+
+		for (var line : font.split(Component.literal(Lang.t("water.intro_what")), room)) {
+			graphics.drawString(font, line, left, y, LABEL_COLOR, false);
+			y += 11;
+		}
+
+		y += 10;
+
+		for (var line : font.split(Component.literal(Lang.t("water.intro_who")), room)) {
+			graphics.drawString(font, line, left, y, DIM_COLOR, false);
+			y += 11;
+		}
+	}
+
+	/**
+	 * The currents map: drawing, and the four buttons that go with drawing.
+	 *
+	 * <p>Everything you set once and forget lives on Setup, and everything you read lives on Cost.
+	 * What is left here is what you press with the map in front of you.
+	 */
+	private void initWater() {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+		int buttonY = 30;
+		int left = 6;
+		int gap = 4;
+
+		record WaterButton(Component label, Runnable action) {
+		}
+
+		List<WaterButton> buttons = List.of(
+				new WaterButton(Lang.c(water.isEmpty() ? "water.generate" : "water.regenerate"),
+						this::generateWater),
+				new WaterButton(Lang.c(waterDraw ? "water.draw_on" : "water.draw_off"), () -> {
+					waterDraw = !waterDraw;
+					MAP_VIEW.cancelRun();
+				}),
+				new WaterButton(Lang.c("map.undo"), this::undoRun),
+				new WaterButton(Lang.c("water.clear"), this::clearWater));
+
+		int buttonWidth = Math.clamp((width - left * 2 - gap * (buttons.size() - 1)) / buttons.size(),
+				44, 130);
+
+		for (int index = 0; index < buttons.size(); index++) {
+			WaterButton entry = buttons.get(index);
+			Component label = Component.literal(fit(entry.label().getString(), buttonWidth - 8));
+			addRenderableWidget(Button.builder(label, b -> {
+				entry.action().run();
+				rebuildWidgets();
+			}).bounds(left + index * (buttonWidth + gap), buttonY, buttonWidth, 18).build());
+		}
+
+		MAP_VIEW.ensureCentred(plan, mapWidth(), mapHeight());
+	}
+
+	/** Everything about the network you decide once: where it drains, what shape, what it is made of. */
+	private void initWaterSetup() {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+		BeaconatorConfig config = BeaconatorConfig.get();
+		int left = width / 2 - 154;
+		int right = width / 2 + 4;
+		int y = 40;
+		int step = Math.clamp((height - 90 - y) / 7, 22, 30);
+
+		addRenderableWidget(Button.builder(Lang.c("water.drain_here"), button -> {
+			pickDrain();
+			rebuildWidgets();
+		}).bounds(left, y, 150, 20).tooltip(Tooltip.create(Lang.c("water.drain_tip"))).build());
+
+		// The layer the ice floor sits on. It defaults to the deepest one there is, because that is
+		// where the pyramid bases already are and the channel is free real estate down there, but a
+		// perimeter built at another depth needs to say so.
+		stepper(left, y + step, Lang.t("water.channel_y"), () -> water.spec().y(), value -> {
+			WaterSpec spec = water.spec();
+			water.setSpec(new WaterSpec(spec.layout(), value, spec.rowStep(), spec.iceBlock(),
+					spec.sourceEvery(), spec.sink()));
+			PlanManager.markDirty();
+			waterTouched = true;
+		}, -64, 320);
+
+		addRenderableWidget(Button.builder(Lang.c(water.spec().layout() == WaterLayout.TREE
+				? "water.layout_tree" : "water.layout_fishbone"), button -> {
+					water.setSpec(water.spec().with(water.spec().layout() == WaterLayout.TREE
+							? WaterLayout.FISHBONE : WaterLayout.TREE));
+					PlanManager.markDirty();
+					waterTouched = true;
+					rebuildWidgets();
+				}).bounds(left, y + step * 2, 150, 20)
+				.tooltip(Tooltip.create(Lang.c("water.layout_tip"))).build());
+
+		addRenderableWidget(Button.builder(Lang.c("water.ice", shortName(water.spec().iceBlock())),
+				button -> {
+					water.setSpec(water.spec().withIce(nextIce(water.spec().iceBlock())));
+					PlanManager.markDirty();
+					waterTouched = true;
+					rebuildWidgets();
+				}).bounds(left, y + step * 3, 150, 20)
+				.tooltip(Tooltip.create(Lang.c("water.ice_tip"))).build());
+
+		// How far a source carries. Only worth touching once you have dug a stretch and found out
+		// what the water actually does, which is why it is a number and not a guess in the code.
+		stepper(left, y + step * 4, Lang.t("water.source_every"),
+				() -> water.spec().sourceEvery(), value -> {
+			WaterSpec spec = water.spec();
+			water.setSpec(new WaterSpec(spec.layout(), spec.y(), spec.rowStep(), spec.iceBlock(),
+					Math.max(1, value), spec.sink()));
+			PlanManager.markDirty();
+			waterTouched = true;
+		}, 1, 64);
+
+		stepper(left, y + step * 5, Lang.t("water.row_step"),
+				() -> water.spec().rowStep(), value -> {
+			water.setSpec(water.spec().withRowStep(Math.max(1, value)));
+			PlanManager.markDirty();
+			waterTouched = true;
+		}, 1, 8);
+
+		onOff(right, y, "water.show", config.renderWater, value -> config.renderWater = value);
+		colourButton(right, y + step, 150, "water.colour", () -> config.colorWater,
+				value -> config.colorWater = value);
+		colourButton(right, y + step * 2, 150, "water.colour_bad", () -> config.colorWaterBad,
+				value -> config.colorWaterBad = value);
+		colourButton(right, y + step * 3, 150, "water.colour_drain", () -> config.colorWaterDrain,
+				value -> config.colorWaterDrain = value);
+
+		onOff(right, y + step * 4, "water.fittings", config.showFittings,
+				value -> config.showFittings = value);
+
+		addRenderableWidget(Button.builder(Lang.c("water.intro_again"), button -> {
+			BeaconatorConfig.get().waterIntroSeen = false;
+			BeaconatorConfig.get().save();
+			rebuildWidgets();
+		}).bounds(right, y + step * 5, 150, 20).build());
+	}
+
+	/** What is set right now, in words, under the buttons that set it. */
+	private void renderWaterSetup(GuiGraphics graphics) {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+		int left = width / 2 - 154;
+		int y = height - 92;
+
+		String drain = water.spec().sink() == null
+				? Lang.t("water.drain_none")
+				: Lang.t("water.drain_set", water.spec().sink().x(), water.spec().sink().z());
+		graphics.drawString(font, fit(drain, width - 16), left, y,
+				water.spec().sink() == null ? WARN_COLOR : LABEL_COLOR, false);
+		graphics.drawString(font, fit(Lang.t("water.layer",
+				water.spec().y(), water.spec().waterY()), width - 16), left, y + 12, DIM_COLOR, false);
+
+		// Say what that height means rather than only what it is. The default is the one layer that
+		// costs nothing to dig; anywhere else and the channel is crossing the pyramids, not passing
+		// between them, which the red runs will tell you about but late.
+		int baseY = plan.beaconY() - plan.level();
+		String note = water.spec().y() == WaterSpec.BOTTOM_LAYER && baseY == WaterSpec.BOTTOM_LAYER
+				? Lang.t("water.layer_bottom")
+				: Lang.t("water.layer_high", baseY);
+		graphics.drawString(font, fit(note, width - 16), left, y + 24, DIM_COLOR, false);
+		graphics.drawString(font, fit(Lang.t("water.setup_hint"), width - 16), left, y + 36,
+				DIM_COLOR, false);
+	}
+
+	/** The bill, in full, on a page with room for it. */
+	private void initWaterCost() {
+		PerimeterPlan plan = PlanManager.plan();
+
+		addRenderableWidget(Button.builder(Lang.c(plan.water().isEmpty()
+				? "water.generate" : "water.regenerate"), button -> {
+					generateWater();
+					rebuildWidgets();
+				}).bounds(width / 2 - 75, 32, 150, 20).build());
+	}
+
+	private void renderWaterCost(GuiGraphics graphics) {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+		int left = width / 2 - 154;
+		int y = 62;
+
+		if (water.isEmpty()) {
+			graphics.drawCenteredString(font, Lang.t("water.empty"), width / 2, y, DIM_COLOR);
+			return;
+		}
+
+		WaterNetwork network = WaterCache.network(plan);
+		WaterBudget budget = network.budget();
+
+		for (Map.Entry<String, Integer> entry : budget.tally().counts().entrySet()) {
+			Block block = WorldScanner.block(entry.getKey());
+
+			if (block != null) {
+				graphics.renderItem(new ItemStack(block.asItem()), left, y - 4);
+			}
+
+			graphics.drawString(font, shortName(entry.getKey()), left + 20, y, LABEL_COLOR, false);
+			graphics.drawString(font, String.format("%,d", entry.getValue()), left + 190, y,
+					LABEL_COLOR, false);
+			y += 18;
+		}
+
+		y += 6;
+		graphics.drawString(font, Lang.t("water.cost_mine",
+				String.format("%,d", budget.iceToMine()), shortName(water.spec().iceBlock()),
+				WaterBudget.shulkers(budget.iceToMine())), left, y, LABEL_COLOR, false);
+		y += 14;
+		graphics.drawString(font, Lang.t("water.cost_channel",
+				String.format("%,d", budget.channelBlocks()),
+				String.format("%,d", budget.blocksToDig())), left, y, DIM_COLOR, false);
+		y += 14;
+		graphics.drawString(font, Lang.t("water.cost_trip",
+				String.format("%,d", budget.trip().longest()),
+				String.format("%,d", budget.trip().average()),
+				budget.trip().maxTurns()), left, y, DIM_COLOR, false);
+		y += 12;
+		graphics.drawString(font, budget.trip().overhead() == 0
+				? Lang.t("water.ideal_perfect")
+				: Lang.t("water.ideal", budget.trip().overhead()), left, y,
+				budget.trip().overhead() == 0 ? OK_COLOR : DIM_COLOR, false);
+		y += 18;
+		graphics.drawString(font, Lang.t("water.cost_nodes", budget.nodesServed(),
+				budget.nodesOrphaned(), plan.countByStatus(NodeStatus.EXCLUDED)),
+				left, y, DIM_COLOR, false);
+		y += 14;
+		graphics.drawString(font, Lang.t("water.cost_flow", budget.waterSources(),
+				budget.flowStops(), budget.junctions()), left, y, DIM_COLOR, false);
+
+		int[] scanned = WaterScan.tally(plan);
+		int read = scanned[ChannelState.SOLID.ordinal()] + scanned[ChannelState.OPEN.ordinal()]
+				+ scanned[ChannelState.FLOORED.ordinal()] + scanned[ChannelState.FLOWING.ordinal()];
+
+		if (read > 0) {
+			y += 18;
+			graphics.drawString(font, Lang.t("water.progress",
+					String.format("%,d", scanned[ChannelState.FLOWING.ordinal()]),
+					String.format("%,d", scanned[ChannelState.FLOORED.ordinal()]),
+					String.format("%,d", scanned[ChannelState.OPEN.ordinal()]),
+					String.format("%,d", scanned[ChannelState.SOLID.ordinal()])),
+					left, y, LABEL_COLOR, false);
+			y += 12;
+			graphics.drawString(font, Lang.t("water.progress_note",
+					String.format("%,d", scanned[ChannelState.UNKNOWN.ordinal()])),
+					left, y, DIM_COLOR, false);
+		}
+
+		y += 14;
+		graphics.drawString(font, Lang.t("water.fittings_note"), left, y, DIM_COLOR, false);
+
+		int blocked = budget.blockedRuns();
+		int lost = network.disconnected().size();
+
+		if (blocked > 0 || lost > 0) {
+			y += 18;
+			graphics.drawString(font, blocked > 0 ? Lang.t("water.blocked", blocked)
+					: Lang.t("water.disconnected", lost), left, y, WARN_COLOR, false);
+		}
+	}
+
+	/** Packed ice, blue ice, plain ice: the three anybody actually floors a channel with. */
+	private static String nextIce(String current) {
+		return switch (current) {
+			case WaterSpec.PACKED_ICE -> WaterSpec.BLUE_ICE;
+			case WaterSpec.BLUE_ICE -> "minecraft:ice";
+			default -> WaterSpec.PACKED_ICE;
+		};
+	}
+
+	/**
+	 * Lays a fresh network over the plan, throwing away anything drawn by hand.
+	 *
+	 * <p>Asks first when there is hand drawn work to lose. Not a dialog: the button says what it is
+	 * about to destroy and you press it again, which is the same answer with one less screen.
+	 */
+	private void generateWater() {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+
+		if (water.edited() && !confirmGenerate) {
+			confirmGenerate = true;
+			setStatus(Lang.t("water.confirm_generate", water.runs().size()), WARN_COLOR);
+			return;
+		}
+
+		confirmGenerate = false;
+		water.generate(plan);
+		PlanManager.markDirty();
+		WaterCache.invalidate();
+		waterTouched = true;
+		setStatus(Lang.t("water.generated", water.runs().size(),
+				String.format("%,d", water.network(plan).channelBlocks())), OK_COLOR);
+	}
+
+	private void clearWater() {
+		PerimeterPlan plan = PlanManager.plan();
+		WaterPlan water = plan.water();
+
+		if (water.isEmpty()) {
+			return;
+		}
+
+		if (!confirmClear) {
+			confirmClear = true;
+			setStatus(Lang.t("water.confirm_clear", water.runs().size()), WARN_COLOR);
+			return;
+		}
+
+		confirmClear = false;
+		water.clear();
+		PlanManager.markDirty();
+		WaterCache.invalidate();
+		waterTouched = true;
+		setStatus(Lang.t("water.cleared"), OK_COLOR);
+	}
+
+	/**
+	 * Takes the drain from whatever you were aiming at.
+	 *
+	 * <p>Aimed at rather than typed because the middle of a grid is not a place: it is usually
+	 * inside the centre node's own pyramid, and the sorter is wherever it actually got built. The
+	 * game keeps aiming while this screen is open, so the block is the one you were looking at when
+	 * you opened it.
+	 */
+	private void pickDrain() {
+		Minecraft mc = Minecraft.getInstance();
+		PerimeterPlan plan = PlanManager.plan();
+
+		if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.BLOCK) {
+			setStatus(Lang.t("water.drain_look"), WARN_COLOR);
+			return;
+		}
+
+		BlockPos pos = ((BlockHitResult) mc.hitResult).getBlockPos();
+		WaterPlan water = plan.water();
+		water.setSpec(water.spec().drainingAt(pos.getX(), pos.getZ()));
+		PlanManager.markDirty();
+		WaterCache.invalidate();
+		waterTouched = true;
+		setStatus(Lang.t("water.drain_set", pos.getX(), pos.getZ()), OK_COLOR);
+	}
+
+	private void undoRun() {
+		WaterSegment run = PlanManager.plan().water().removeLast();
+
+		if (run == null) {
+			setStatus(Lang.t("map.nothing_to_undo"), DIM_COLOR);
+			return;
+		}
+
+		PlanManager.markDirty();
+		waterTouched = true;
+		setStatus(Lang.t("water.erased", run.length()), OK_COLOR);
+	}
+
+	/** Click, drag and erase on the currents map. */
+	private boolean waterClicked(double mouseX, double mouseY, int button) {
+		PerimeterPlan plan = PlanManager.plan();
+		int[] block = MAP_VIEW.blockAt(mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
+
+		// Right click erases whatever run is under it, whether Draw is on or not: getting rid of a
+		// wrong line is not a mode you should have to be in.
+		if (button == 1) {
+			int before = channelLength(plan);
+			boolean erased = plan.water().removeAt(block[0], block[1]);
+
+			if (erased) {
+				PlanManager.markDirty();
+				waterTouched = true;
+				setStatus(Lang.t("water.erased", before - channelLength(plan)), OK_COLOR);
+			} else {
+				setStatus(Lang.t("water.nothing_there"), DIM_COLOR);
+			}
+
+			return true;
+		}
+
+		if (button == 0 && waterDraw) {
+			MAP_VIEW.beginRun(block[0], block[1]);
+			return true;
+		}
+
+		dragging = true;
+		return true;
+	}
+
+	/** Blocks of channel there are right now, counting a crossing twice. Only for saying what changed. */
+	private static int channelLength(PerimeterPlan plan) {
+		int total = 0;
+
+		for (WaterSegment run : plan.water().runs()) {
+			total += run.length();
+		}
+
+		return total;
+	}
+
+	private void renderWater(GuiGraphics graphics, int mouseX, int mouseY) {
+		PerimeterPlan plan = PlanManager.plan();
+		MAP_VIEW.render(graphics, plan, mapX(), mapY(), mapWidth(), mapHeight(), mouseX, mouseY);
+
+		graphics.fill(0, mapY() + mapHeight(), width, mapY() + mapHeight() + 28, 0xC0101318);
+		WaterPlan water = plan.water();
+		int textY = mapY() + mapHeight() + 4;
+
+		if (water.isEmpty()) {
+			graphics.drawString(font, Lang.t("water.empty"), mapX() + 4, textY, DIM_COLOR, false);
+		} else {
+			WaterNetwork network = WaterCache.network(plan);
+			WaterBudget budget = network.budget();
+			String line = Lang.t("water.stats",
+					String.format("%,d", budget.channelBlocks()),
+					String.format("%,d", budget.iceToMine()),
+					shortName(water.spec().iceBlock()),
+					WaterBudget.shulkers(budget.iceToMine()),
+					String.format("%,d", budget.trip().longest()));
+			graphics.drawString(font, fit(line, width - 16), mapX() + 4, textY, LABEL_COLOR, false);
+
+			// Second line: what is wrong if anything is, otherwise how the digging is going.
+			int blocked = budget.blockedRuns();
+			int lost = network.disconnected().size();
+			int[] scanned = WaterScan.tally(plan);
+			int read = scanned[ChannelState.SOLID.ordinal()] + scanned[ChannelState.OPEN.ordinal()]
+					+ scanned[ChannelState.FLOORED.ordinal()] + scanned[ChannelState.FLOWING.ordinal()];
+			String second = blocked > 0 ? Lang.t("water.blocked", blocked)
+					: lost > 0 ? Lang.t("water.disconnected", lost)
+					: budget.nodesOrphaned() > 0 ? Lang.t("water.orphans", budget.nodesOrphaned())
+					: read == 0 ? Lang.t("water.all_served", budget.nodesServed())
+					: Lang.t("water.progress",
+							String.format("%,d", scanned[ChannelState.FLOWING.ordinal()]),
+							String.format("%,d", scanned[ChannelState.FLOORED.ordinal()]),
+							String.format("%,d", scanned[ChannelState.OPEN.ordinal()]),
+							String.format("%,d", scanned[ChannelState.SOLID.ordinal()]));
+			graphics.drawString(font, fit(second, width - 16), mapX() + 4, textY + 11,
+					blocked > 0 || lost > 0 || budget.nodesOrphaned() > 0 ? WARN_COLOR : OK_COLOR,
+					false);
+		}
+
+		// The hint goes on the right of the first line, where the beacons map puts its own.
+		String hint = waterDraw ? Lang.t("water.hint_draw") : Lang.t("water.hint_look");
+		graphics.drawString(font, hint, width - 8 - font.width(hint), mapY() + mapHeight() + 17,
+				DIM_COLOR, false);
+
+		String where = water.spec().sink() == null
+				? Lang.t("water.drain_none")
+				: Lang.t("water.drain_set", water.spec().sink().x(), water.spec().sink().z());
+		graphics.drawString(font, where, width - 8 - font.width(where), mapY() + 6, DIM_COLOR, false);
+
+		if (!PlanManager.inPlanDimension()) {
+			graphics.drawCenteredString(font, Lang.t("wrong_dimension", plan.dimension()),
+					width / 2, mapY() + 8, WARN_COLOR);
+		}
 	}
 
 	// -------------------------------------------------------------------- plan
@@ -902,6 +1511,17 @@ public class BeaconatorScreen extends Screen {
 				plan.countByStatus(NodeStatus.PLACED), plan.countByStatus(NodeStatus.PENDING),
 				plan.countByStatus(NodeStatus.EXCLUDED), plan.countByStatus(NodeStatus.REMOVED)),
 				left, y, DIM_COLOR, false);
+
+		// One line about the water, and the rest of it on its own page. The ice alone is nine times
+		// the length of the network, so a full breakdown here would bury the pyramids it sits under.
+		if (!plan.water().isEmpty()) {
+			WaterBudget budget = WaterCache.network(plan).budget();
+			y += 20;
+			graphics.drawString(font, fit(Lang.t("water.see_cost",
+					String.format("%,d", budget.channelBlocks()),
+					WaterBudget.shulkers(budget.iceToMine())), width - 16),
+					left, y, DIM_COLOR, false);
+		}
 	}
 
 	// -------------------------------------------------------------------- keys
@@ -952,10 +1572,17 @@ public class BeaconatorScreen extends Screen {
 
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		// Ctrl+Z anywhere in the screen, as long as a text field does not want the key.
+		// Ctrl+Z anywhere in the screen, as long as a text field does not want the key. On the
+		// water tab it takes back the last run instead: undoing a node you marked ten minutes ago
+		// is not what anybody means by undo while they are drawing channels.
 		if (keyCode == InputConstants.KEY_Z && hasControlDown() && listeningFor == null
 				&& getFocused() instanceof EditBox == false) {
-			undo();
+			if (activeTab == Tab.WATER_MAP && PlanManager.hasPlan()) {
+				undoRun();
+			} else {
+				undo();
+			}
+
 			return true;
 		}
 
@@ -1135,10 +1762,10 @@ public class BeaconatorScreen extends Screen {
 		int left = width / 2 - 154;
 		int right = width / 2 + 4;
 		int y = 32;
-		// Thirteen rows have to fit above the Done button, and at a big gui scale the screen is
+		// Fourteen rows have to fit above the Done button, and at a big gui scale the screen is
 		// only 240 tall. Derive the spacing from the room there actually is rather than assuming
 		// 22 and running off the bottom of small screens.
-		int step = Math.clamp((height - 34 - y) / 13, 17, 22);
+		int step = Math.clamp((height - 34 - y) / 14, 17, 22);
 
 		// displayOnlyValue, or the widget prefixes the value with an empty message and a stray
 		// ": " shows up at the front of the button.
@@ -1261,6 +1888,13 @@ public class BeaconatorScreen extends Screen {
 		}).bounds(right + 76, layerY, 74, 20).build();
 		layerDown.active = LayerFilter.active();
 		addRenderableWidget(layerDown);
+
+		// The water lines get one row here rather than a tab of their own settings: seeing them or
+		// not is the same kind of choice as seeing the coverage or not.
+		onOff(left, layerY + step, "water.show", config.renderWater,
+				value -> config.renderWater = value);
+		colourButton(right, layerY + step, 150, "water.materials", () -> config.colorWater,
+				value -> config.colorWater = value);
 	}
 
 	// ----------------------------------------------------------------- actions
@@ -1586,6 +2220,16 @@ public class BeaconatorScreen extends Screen {
 			renderMap(graphics, mouseX, mouseY);
 		}
 
+		if (activeTab.section == Section.WATER && !BeaconatorConfig.get().waterIntroSeen) {
+			renderWaterIntro(graphics);
+		} else if (activeTab == Tab.WATER_MAP && PlanManager.hasPlan()) {
+			renderWater(graphics, mouseX, mouseY);
+		} else if (activeTab == Tab.WATER_COST && PlanManager.hasPlan()) {
+			renderWaterCost(graphics);
+		} else if (activeTab == Tab.WATER_SETUP && PlanManager.hasPlan()) {
+			renderWaterSetup(graphics);
+		}
+
 		if (!status.isEmpty()) {
 			graphics.drawCenteredString(font, status, width / 2, height - 44, statusColor);
 		}
@@ -1600,6 +2244,13 @@ public class BeaconatorScreen extends Screen {
 	public void onClose() {
 		PlanManager.autoSave();
 		MapStore.saveAll();
+
+		// Channels drawn on a shared plan go up when the screen closes, in one piece. Sending the
+		// whole plan on every stroke would be hundreds of kilobytes for a line you might undo.
+		if (waterTouched) {
+			ClientSync.resend();
+			waterTouched = false;
+		}
 		minecraft.setScreen(parent);
 	}
 

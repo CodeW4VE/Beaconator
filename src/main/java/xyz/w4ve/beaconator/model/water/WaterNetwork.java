@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import xyz.w4ve.beaconator.model.GridNode;
 import xyz.w4ve.beaconator.model.NodeKey;
+import xyz.w4ve.beaconator.model.NodeStatus;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
 import xyz.w4ve.beaconator.model.PyramidCalculator;
 
@@ -58,7 +59,108 @@ public final class WaterNetwork {
 		return spec.layout() == WaterLayout.TREE ? tree(plan, spec) : fishbone(plan, spec);
 	}
 
+	/**
+	 * A network made of runs that already exist, rather than one worked out from the layout.
+	 *
+	 * <p>This is what measures a network once it has been edited: a run somebody drew and a run the
+	 * fishbone laid are the same thing to everything downstream, so both come through here to be
+	 * counted. The only part the layout used to give us for free is where each node joins the
+	 * channel, and here that is read off the runs instead: a node is served when the channel passes
+	 * within one block of its pyramid base, which is exactly where the water coming down the side of
+	 * the pyramid lands. Anything else is a node the network does not reach, and it is listed as an
+	 * orphan rather than quietly assumed to be fine.
+	 */
+	public static WaterNetwork over(PerimeterPlan plan, WaterSpec spec, List<WaterSegment> segments) {
+		Set<Long> blocks = rasterise(segments);
+		Map<NodeKey, Long> entries = new LinkedHashMap<>();
+		List<NodeKey> orphans = new ArrayList<>();
+		long drain = drain(plan, spec);
+
+		for (GridNode node : served(plan)) {
+			Long entry = entryFor(plan, node, blocks, drain);
+
+			if (entry == null) {
+				orphans.add(node.key());
+			} else {
+				entries.put(node.key(), entry);
+			}
+		}
+
+		return new WaterNetwork(plan, spec, segments, entries, orphans, drain);
+	}
+
+	/**
+	 * Where a node's items join the channel: the block of it hugging the base that is closest to
+	 * the beacon itself, with ties going to whichever is further in towards the drain.
+	 *
+	 * <p>Closest to the beacon rather than closest to the drain, which is the tempting one. The
+	 * water comes down the face of the pyramid below the beacon, so that is where an item is
+	 * actually put into the channel, and picking the corner nearest the middle instead would shave
+	 * a few blocks off every trip on paper that nothing shaves off in the world.
+	 */
+	private static Long entryFor(PerimeterPlan plan, GridNode node, Set<Long> blocks, long drain) {
+		int[] base = base(plan, node);
+		long beacon = pack(node.x(), node.z());
+		Long best = null;
+		int bestCost = Integer.MAX_VALUE;
+		int bestTieBreak = Integer.MAX_VALUE;
+
+		for (int x = base[0] - 1; x <= base[1] + 1; x++) {
+			for (int z = base[2] - 1; z <= base[3] + 1; z++) {
+				if (x >= base[0] && x <= base[1] && z >= base[2] && z <= base[3]) {
+					continue;
+				}
+
+				long at = pack(x, z);
+
+				if (!blocks.contains(at)) {
+					continue;
+				}
+
+				int cost = manhattan(at, beacon);
+				int tieBreak = manhattan(at, drain);
+
+				if (cost < bestCost || (cost == bestCost && tieBreak < bestTieBreak)) {
+					bestCost = cost;
+					bestTieBreak = tieBreak;
+					best = at;
+				}
+			}
+		}
+
+		return best;
+	}
+
 	// ----------------------------------------------------------------- shapes
+
+	/**
+	 * The nodes the channel is dug for: everything in the perimeter except the excluded ones.
+	 *
+	 * <p>An excluded node is outside the perimeter. It gets built, pyramid and marker and all, so
+	 * that it reads as "not one of ours" from a distance, but nobody throws shulkers in at one and
+	 * running a channel to it is digging half a perimeter's worth of ice for nothing.
+	 */
+	private static List<GridNode> served(PerimeterPlan plan) {
+		List<GridNode> served = new ArrayList<>();
+
+		for (GridNode node : plan.buildNodes()) {
+			if (plan.statusAt(node.key()) != NodeStatus.EXCLUDED) {
+				served.add(node);
+			}
+		}
+
+		return served;
+	}
+
+	/**
+	 * Every base on the bottom layer, excluded nodes included.
+	 *
+	 * <p>They are not served, but they are very much in the way: their pyramid sits on the same
+	 * layer as the channel and digging through it breaks a beacon just the same.
+	 */
+	private static List<GridNode> obstacles(PerimeterPlan plan) {
+		return plan.buildNodes();
+	}
 
 	/**
 	 * One spine per row, one trunk to the middle.
@@ -75,7 +177,7 @@ public final class WaterNetwork {
 		// stays in. One moved across rows does not, and letting it drag the spine towards itself
 		// would pull the lane away from every other node in the row. It goes without a channel,
 		// which is what a crew does with it anyway: mark it and carry the drops by hand.
-		for (GridNode node : plan.buildNodes()) {
+		for (GridNode node : served(plan)) {
 			if (plan.offsetAt(node.key())[1] != 0) {
 				orphans.add(node.key());
 			} else {
@@ -91,6 +193,12 @@ public final class WaterNetwork {
 
 		for (GridNode node : live) {
 			rows.computeIfAbsent(node.j(), key -> new ArrayList<>()).add(node);
+		}
+
+		Map<Integer, List<GridNode>> rowObstacles = new TreeMap<>();
+
+		for (GridNode node : obstacles(plan)) {
+			rowObstacles.computeIfAbsent(node.j(), key -> new ArrayList<>()).add(node);
 		}
 
 		long drain = drain(plan, spec);
@@ -130,6 +238,19 @@ public final class WaterNetwork {
 					// The node the trunk runs past. Either run reaches it, so it needs no end of
 					// its own, but the row still needs a spine even if it is the only node there.
 					westEnd = westEnd == null ? base[0] : Math.min(westEnd, base[0]);
+				}
+			}
+
+			// An excluded node in this row gets no water and is still a pyramid on the floor. If the
+			// spine would pass it, it has to clear it too, or the row is dug straight through a base.
+			int from = westEnd == null ? trunkX : westEnd;
+			int to = eastEnd == null ? trunkX : eastEnd;
+
+			for (GridNode node : rowObstacles.getOrDefault(row.getKey(), List.<GridNode>of())) {
+				int[] base = base(plan, node);
+
+				if (base[1] >= from && base[0] <= to) {
+					spine = Math.max(spine, base[3] + 1);
 				}
 			}
 
@@ -196,7 +317,7 @@ public final class WaterNetwork {
 		// same question when coverage is cut back. Moved nodes are out either way: the lattice a
 		// tree is routed on is one lane per row and per column of bases, and a node off the grid
 		// widens the lane of a whole row or column to reach itself.
-		for (GridNode node : plan.buildNodes()) {
+		for (GridNode node : served(plan)) {
 			if (plan.moved(node.key()) || Math.floorMod(node.j(), spec.rowStep()) != 0) {
 				orphans.add(node.key());
 			} else {
@@ -208,7 +329,9 @@ public final class WaterNetwork {
 			return new WaterNetwork(plan, spec, List.of(), Map.of(), orphans, drain(plan, spec));
 		}
 
-		Corridors corridors = Corridors.of(plan, live);
+		// The lanes come from every base there is, not only the ones being served: a lane laid
+		// between two served nodes still has to miss the excluded one sitting between them.
+		Corridors corridors = Corridors.of(plan, obstacles(plan));
 		List<WaterSegment> segments = new ArrayList<>();
 		Map<NodeKey, Long> entries = new LinkedHashMap<>();
 
@@ -321,6 +444,14 @@ public final class WaterNetwork {
 
 		for (GridNode node : live) {
 			lanes.merge(node.i(), base(plan, node)[1] + 1, Math::max);
+		}
+
+		// Widen each candidate lane past anything else standing in that column, excluded nodes
+		// included: the trunk runs the whole height of the grid and meets all of them.
+		for (GridNode node : obstacles(plan)) {
+			if (lanes.containsKey(node.i())) {
+				lanes.merge(node.i(), base(plan, node)[1] + 1, Math::max);
+			}
 		}
 
 		Integer best = null;

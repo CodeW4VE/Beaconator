@@ -122,11 +122,41 @@ packed ice is nine blocks of ice each, blue ice is eighty one. Blue ice buys not
 because distance is the same, so it is only worth arguing about if the ice under the water turns
 out to change how fast an item actually moves, which is a thing to settle in game.
 
+**Done in 2.0.0: the document, the drawing, and the count.**
+
+- `model/water/WaterPlan` is the document: the runs, the spec, the drain, saved inside the plan's
+  own JSON and therefore shared, opened and travelled with it for free. It carries a `revision` so
+  a cache can tell when it has moved on, because measuring means flooding ten thousand blocks and
+  that is not a per frame job.
+- `WaterNetwork.over(plan, spec, runs)` measures runs that already exist, so a run somebody drew
+  and a run the fishbone laid are counted by the same code. A node is served when the channel
+  passes within a block of its base, and the entry point is the one nearest **the beacon**, not
+  the one nearest the drain: the water comes down the face under the beacon, and picking the near
+  corner would shave blocks off every trip on paper that nothing shaves off in the world.
+- The **Water tab**: its own map, the beacons dimmed, Generate, Draw, erase, drain by aiming,
+  layout and ice, and a one time explanation of who this is for at all.
+- The **budget in the Materials tab**, and the channels drawn in the world at their own layer
+  (`render/WaterRenderer`, which only ever emits into a buffer somebody else opened, so it ships
+  unchanged to all ten versions).
+
 **Next, in order.**
 
-1. **The network becomes a document.** Right now `WaterNetwork` is computed on the spot from the
+1. ~~The network becomes a document.~~ Done in 2.0.0. Right now `WaterNetwork` is computed on the spot from the
    plan. Drawing on it means it has to be a thing that is kept and saved next to the plan: the
    runs, the drain, the spec. Generate fills it in, the map edits it, the file remembers it.
+2. ~~The drawing, and drawing on it.~~ Done in 2.0.0, red for a run through a base included.
+
+3. ~~The count.~~ Done in 2.0.0, on the Materials tab under the pyramids.
+
+4. **The blocks.** Ice, floor and the drop from each beacon, exportable as a litematic. Not done:
+   `PerimeterPlan.blockAt` is what the export, the scan and easy place all read, so putting the
+   channel in there touches three things that currently only know about pyramids. Worth doing
+   deliberately rather than as a fifth item on a release.
+
+5. **Water and plates.** Still last, still on purpose.
+
+**The old list, for the record.**
+
 2. **The drawing, and drawing on it.** The network in the world and on the currents map, with the
    beacons dimmed, runs one block wide, erase and redraw, visible through the ground. A run drawn
    through a pyramid base is drawn in red rather than refused: the mod says what it would break

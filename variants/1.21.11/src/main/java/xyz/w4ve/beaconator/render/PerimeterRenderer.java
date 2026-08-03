@@ -73,8 +73,10 @@ public final class PerimeterRenderer {
 			return;
 		}
 
+		// The water lines are their own answer to "is there anything to draw": they live under the
+		// perimeter and stand on their own, so having every overlay off must not take them with it.
 		if (!config.renderCoverage && !config.renderWireframe && !config.renderBeaconMarkers
-				&& !config.showBeams) {
+				&& !config.showBeams && !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -91,10 +93,6 @@ public final class PerimeterRenderer {
 		List<GridNode> nodes = visible;
 		visible = List.of();
 
-		if (nodes.isEmpty()) {
-			return;
-		}
-
 		PerimeterPlan plan = PlanManager.plan();
 		Minecraft mc = Minecraft.getInstance();
 
@@ -103,6 +101,12 @@ public final class PerimeterRenderer {
 		}
 
 		BeaconatorConfig config = BeaconatorConfig.get();
+
+		// Nothing extracted does not mean nothing to draw: the water lines are not culled per node,
+		// so a frame where every node is off screen still has channels to put on the ground.
+		if (nodes.isEmpty() && !(config.enabled && WaterRenderer.wants(plan, config))) {
+			return;
+		}
 		Vec3 camera = mc.gameRenderer.getMainCamera().position();
 		PoseStack matrices = context.matrices();
 
@@ -127,7 +131,8 @@ public final class PerimeterRenderer {
 			BeaconatorConfig config, Matrix4f matrix) {
 		// Beams and gap strips are their own settings and do not belong to the coverage volumes.
 		// They used to live behind this check, so turning the coverage off took the beams with it.
-		if (!config.renderCoverage && !config.showBeams && !plan.hasCoverageGaps()) {
+		if (!config.renderCoverage && !config.showBeams && !plan.hasCoverageGaps()
+				&& !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -162,6 +167,7 @@ public final class PerimeterRenderer {
 
 		any |= drawBeams(plan, nodes, mc, config, matrix, buffer);
 		any |= drawGapStrips(plan, nodes, mc, config, matrix, buffer);
+		any |= WaterRenderer.emitFaces(plan, config, matrix, buffer);
 
 		MeshData mesh = buffer.build();
 
@@ -320,7 +326,8 @@ public final class PerimeterRenderer {
 
 	private static void drawLines(PerimeterPlan plan, List<GridNode> nodes, Minecraft mc,
 			BeaconatorConfig config, Matrix4f matrix) {
-		if (!config.renderWireframe && !config.renderBeaconMarkers && !config.renderPyramidFootprint) {
+		if (!config.renderWireframe && !config.renderBeaconMarkers && !config.renderPyramidFootprint
+				&& !WaterRenderer.wants(plan, config)) {
 			return;
 		}
 
@@ -381,6 +388,8 @@ public final class PerimeterRenderer {
 				any = true;
 			}
 		}
+
+		any |= WaterRenderer.emitLines(plan, config, matrix, buffer);
 
 		MeshData mesh = buffer.build();
 

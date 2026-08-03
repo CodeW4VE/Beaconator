@@ -37,6 +37,11 @@ Beaconator only does perimeters, so it can do them properly.
 - **Assisted placement** that picks the right block out of your hotbar and refuses to let you put plan blocks where the plan wants none.
 - **Layer filter** to work one course at a time.
 - **Litematica import and export**, so you can pick up a perimeter you already built and hand the schematic to people who do not run this mod. If Litematica is installed, easy place follows its toggle instead of fighting it.
+- **Water lines to the digsort.** A perimeter is only half the build: the other half is the
+  channels that carry what you throw in at a beacon to the sorter in the middle. The **Water** tab
+  works the whole network out from the plan, on the one layer left free between the pyramid bases,
+  and costs it down to the shulkers of ice you actually have to mine. You can draw and erase runs
+  yourself, and what is on the map is what gets built.
 - **A plan shared by the server.** Drop the jar on a Fabric server and one plan belongs to
   everyone: it arrives when you join, and every node anyone places, excludes or drops shows up
   live for the rest. Publishing it is an operator's call, marking nodes is anybody's. Without the
@@ -131,6 +136,33 @@ exactly, with no overlap and no holes. The line under the buttons tells you if i
 **Share mine** to put your plan up there; everyone else presses its name to open it. From then on
 every node anyone finishes shows up for the rest, live. The HUD says `[shared]` when what you
 mark is going out to everyone.
+
+### Water lines
+
+Only worth reading if you are building a digsort. What we do is run water streams from the beacons
+to a sorter in the middle, so a shulker thrown in at any beacon ends up in the sorter on its own.
+If that is not your build, skip this: nothing else in the mod needs it. The tab says as much the
+first time you open it.
+
+1. Aim at the block the water leaves the sorter by, open the screen, go to **Water**, press
+   **Drain: look at it**. There is no sensible default here: the middle of a grid is usually
+   inside the centre node's own pyramid.
+2. Press **Generate**. You get one spine per row of nodes and one trunk to the drain, every run a
+   block clear of every pyramid base. The shape is a fishbone because what is being optimised is
+   how fast items get in, not what the network costs: every item travels its exact Manhattan
+   distance around a single corner, and nothing without diagonals beats that.
+3. Fix what you do not like. **Draw** on, drag to lay a run (one block wide, snapped to the axis),
+   right click to erase one. What you draw replaces the calculation rather than sitting on top of
+   it, which is why **Generate throws away what you drew** and asks first.
+4. Read the bill on the **Materials** tab: channel, ice, buckets, pressure plates. The ice is what
+   has to be **mined**, nine blocks per packed ice and eighty one per blue, so it is an order of
+   magnitude bigger than the length of the network. Better to know now.
+
+A run dug through a pyramid base is drawn in red and a node the channel never reaches gets a
+cross. Neither is refused: it says what it would break and the call is yours.
+
+The water sources and the pressure plates are counted, not placed, and the network does not export
+to a litematic yet. Those are the parts only a real world can check.
 
 ## Keys
 

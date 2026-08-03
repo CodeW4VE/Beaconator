@@ -68,6 +68,28 @@ public class BeaconatorConfig {
 	public float beamMinPixels = 3.0f;
 	public float beamOpacity = 0.65f;
 
+	// -- water ----------------------------------------------------------------
+	/** Draw the water lines in the world. They sit at the bottom layer, so they are seen through. */
+	public boolean renderWater = true;
+	/** How thick a channel is drawn. A one block wide run is a scratch from any real distance. */
+	public float waterWidth = 0.8f;
+	public float waterOpacity = 0.55f;
+	/**
+	 * Show where the water sources and the flow stops would go.
+	 *
+	 * <p>Off by default and marked as a proposal wherever it appears: nothing about those positions
+	 * has been checked against a channel that actually runs. See {@code WaterFittings}.
+	 */
+	public boolean showFittings;
+
+	/**
+	 * The one time explanation on the Water tab has been read.
+	 *
+	 * <p>Kept because the whole feature only makes sense to people who build a digsort, and the
+	 * rest deserve to be told so once and then left alone rather than shown a tab full of jargon.
+	 */
+	public boolean waterIntroSeen;
+
 	// -- hud ------------------------------------------------------------------
 	public boolean showHud = true;
 	/** 0 top left, 1 top right, 2 bottom left, 3 bottom right. */
@@ -105,6 +127,10 @@ public class BeaconatorConfig {
 	public int colorBeamExcluded = 0xFF9AA0A8;
 	/** Used for the strip between nodes when the spacing leaves the perimeter uncovered. */
 	public int colorGap = 0xFFFF4040;
+	/** The water lines: the channel itself, a run that would break a pyramid, and the drain. */
+	public int colorWater = 0xFF35D6D6;
+	public int colorWaterBad = 0xFFFF3B30;
+	public int colorWaterDrain = 0xFFFFD23F;
 
 	// -- editing --------------------------------------------------------------
 	/** Scrolling in edit mode grows and shrinks the grid instead of changing hotbar slot. */
