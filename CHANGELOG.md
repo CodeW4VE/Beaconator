@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0
+
+**Minecraft 26.1 and 26.2.** The mod now ships for the new version series. The jump from 1.21.11
+to 26.x is the largest since 1.21.5 and the port starts from the 1.21.11 rendering layer;
+compile-and-fix iteration is the way through.
+
+- Ships for Minecraft **26.1.2** and **26.2**, each compiled against its own Fabric API.
+- The variant files that draw in the world start from the 1.21.11 base; changes in the rendering
+  API between 1.21.11 and 26.x will surface as compiler errors and get fixed one by one.
+- Fabric Loom is pinned to a stable release (`1.17.17`) instead of a snapshot.
+- The `fabric.mod.json` version range now covers `>=1.21 <26.3` so the jar loads on the new
+  versions without manual editing.
+
 ## 2.0.0
 
 **The water lines.** A perimeter is only half the build: the other half is the channels that carry
