@@ -26,6 +26,7 @@ want while a port is still red.
 """
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,29 @@ VARIANTS = ROOT / "variants"
 # runner has already set JAVA_HOME to a 21, and that is the one to use.
 JDK = pathlib.Path(__import__("os").environ.get("JAVA_HOME")
                    or pathlib.Path.home() / ".local/opt/jdk-21")
+
+
+def jdk_for(version):
+    """Which JDK compiles this version. The 26 series refuses to configure on anything but 25.
+
+    Loom checks the game's own `javaVersion` before it does anything else, so a 21 does not get
+    as far as an error you could read: it stops at "Minecraft 26.2 requires Java 25".
+    """
+    if not unobfuscated(version):
+        return JDK
+
+    environment = __import__("os").environ
+    candidates = [environment.get("BEACONATOR_JDK25"),
+                  environment.get("JAVA_HOME_25_X64"),
+                  environment.get("JAVA_HOME_25"),
+                  pathlib.Path.home() / ".local/opt/jdk-25",
+                  "/usr/lib/jvm/java-25-openjdk"]
+
+    for candidate in candidates:
+        if candidate and pathlib.Path(candidate).is_dir():
+            return pathlib.Path(candidate)
+
+    return JDK
 
 # Minecraft version -> the Fabric API build for it. Anything not listed is not shipped.
 # Order matters: it is the order variant directories stack in.
@@ -52,7 +76,6 @@ TARGETS = {
     "1.21.8": "0.136.1+1.21.8",
     "1.21.11": "0.141.6+1.21.11",
     "26.1.2": "0.155.2+26.1.2",
-    "26.2": "0.156.0+26.2",
 }
 
 # Measured, not shipped, and neither of these is worth shipping.
@@ -65,10 +88,41 @@ TARGETS = {
 # and its own copies of the four variant files. It was current for a month and its Fabric API
 # stopped in December as well. Left here so `--errors` can still be pointed at either of them.
 # See docs/PORT-1.21.9-PLUS.md.
+#
+# 26.2 is a port in progress, and the part that is left is not renames. It replaced the whole path
+# a mod's own geometry takes to the screen: `Tesselator` is gone, a pipeline declares its uniforms
+# through a `BindGroupLayout` rather than one call per uniform, `VertexFormat` no longer uploads an
+# immediate buffer (there is a `StagingBuffer` now), and `RenderPass.drawIndexed` takes another
+# argument. That is `Pipelines` and `ShapeRenderer` rewritten against an API that cannot be checked
+# by compiling: a jar that builds may still die on its first frame, and nobody here runs 26.2 to
+# find out. The renames it does need are already in SINCE_26_1, so pointing `--errors` at it picks
+# up where this left off.
 UNSHIPPED = {
     "1.21.9": "0.134.1+1.21.9",
     "1.21.10": "0.138.4+1.21.10",
+    "26.2": "0.156.0+26.2",
 }
+
+# Mod Menu, per version, for the optional settings button. Its numbering restarts with the game
+# series, so there is no expression that derives one from the other.
+MODMENU = {
+    "26.1.2": "18.0.0",
+    "26.2": "20.0.1",
+}
+
+
+def unobfuscated(version):
+    """True from 26.1 on, which is where Minecraft stopped shipping obfuscated.
+
+    Everything about how a mod is built changes at that line. Mojang no longer publishes the
+    mappings at all, so `officialMojangMappings()` has nothing to find, and Loom split in two:
+    `fabric-loom-remap` still remaps a jar written against mapped names, and the plain
+    `fabric-loom` builds against the game as it is. A mod cannot use one build script for both.
+
+    Told apart by the version number rather than a list, because the numbering changed at the
+    same time: 1.x is the old scheme, 26.x is year-and-release.
+    """
+    return not version.startswith("1.")
 
 # What changed and when. Applied in order to every file listed, for versions at or above the key.
 # Written as plain substitutions rather than a preprocessor: there are five of them, and five
@@ -264,6 +318,89 @@ SINCE_1_21_11 = SINCE_1_21_9 + [
     ("player.getServer()", "player.level().getServer()"),
 ]
 
+# 26.1 is the unobfuscated one, and the renames that came with it are the widest yet. None of
+# them change what the mod does: the drawing of a screen was split into extraction and drawing the
+# same way the world was in 1.21.10, and everything that draws is now named for the phase it runs
+# in. `GuiGraphics` is `GuiGraphicsExtractor`, `render` on a widget is `extract`, and the methods
+# on it say what they draw rather than how: `drawString` is `text`, `hLine` is `horizontalLine`.
+#
+# Fabric renamed its half at the same time: a world is a level, so `WorldRenderEvents` is
+# `LevelRenderEvents` in a `level` package, `KeyBindingHelper` is `KeyMappingHelper`, and the HUD
+# is a registry of elements rather than one callback.
+SINCE_26_1 = SINCE_1_21_11 + [
+    # Fabric: world became level, and the events moved package with it.
+    ("net.fabricmc.fabric.api.client.rendering.v1.world.WorldExtractionContext",
+     "net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext"),
+    ("net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext",
+     "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext"),
+    ("net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents",
+     "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents"),
+    ("WorldExtractionContext", "LevelExtractionContext"),
+    ("WorldRenderContext", "LevelRenderContext"),
+    ("WorldRenderEvents", "LevelRenderEvents"),
+
+    # The HUD is a list of elements you can be added to rather than one callback for everyone. The
+    # handler keeps its shape: an element is handed the extractor and the tick, which is what the
+    # callback was handed. Last, so the mod's own lines sit over the vanilla hud rather than under
+    # the hotbar.
+    ("import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;",
+     "import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;"),
+    ("HudRenderCallback.EVENT.register(BeaconatorHud::render);",
+     "HudElementRegistry.addLast(net.minecraft.resources.Identifier.fromNamespaceAndPath(\n"
+     "\t\t\t\t\"beaconator\", \"hud\"), BeaconatorHud::render);"),
+
+    # A key binding is a key mapping everywhere now.
+    ("import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;",
+     "import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;"),
+    ("KeyBindingHelper.registerKeyBinding(", "KeyMappingHelper.registerKeyMapping("),
+    ("KeyBindingHelper.getBoundKeyOf(", "KeyMappingHelper.getBoundKeyOf("),
+
+    # The client command manager is just the commands now.
+    ("import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;",
+     "import net.fabricmc.fabric.api.client.command.v2.ClientCommands;"),
+    ("ClientCommandManager.", "ClientCommands."),
+
+    # Drawing a screen is extraction, like the world. The type comes first: nothing in the tree
+    # says GuiGraphicsExtractor yet, so this one substitution catches the import and every use.
+    ("GuiGraphics", "GuiGraphicsExtractor"),
+    (".drawString(", ".text("),
+    (".drawCenteredString(", ".centeredText("),
+    (".hLine(", ".horizontalLine("),
+    (".vLine(", ".verticalLine("),
+
+    # Screen, widget, button and list entry: each one's draw method is named for the phase.
+    ("public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {",
+     "public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY,\n"
+     "\t\t\tfloat partialTick) {"),
+    ("super.render(graphics, mouseX, mouseY, partialTick);",
+     "super.extractRenderState(graphics, mouseX, mouseY, partialTick);"),
+    ("protected void renderWidget(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {",
+     "protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX,\n"
+     "\t\t\tint mouseY, float delta) {"),
+    ("protected void renderContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {",
+     "protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY,\n"
+     "\t\t\tfloat delta) {"),
+    ("renderDefaultSprite(graphics);", "extractDefaultSprite(graphics);"),
+    ("public void renderContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered,",
+     "public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY,\n"
+     "\t\t\t\tboolean hovered,"),
+
+    # An item on a screen is drawn by the same name as everything else on it.
+    ("graphics.renderItem(", "graphics.item("),
+
+    # A payload registry is named for the direction in full rather than in the s2c shorthand.
+    ("PayloadTypeRegistry.playS2C()", "PayloadTypeRegistry.clientboundPlay()"),
+    ("PayloadTypeRegistry.playC2S()", "PayloadTypeRegistry.serverboundPlay()"),
+
+    # ChunkPos stopped being two public fields.
+    ("chunk.getPos().x, chunk.getPos().z", "chunk.getPos().x(), chunk.getPos().z()"),
+
+    # Telling the player something is a system message or an overlay message, by name, rather
+    # than one call with a boolean for which.
+    ("mc.player.displayClientMessage(message, false);", "mc.player.sendSystemMessage(message);"),
+    ("mc.player.displayClientMessage(message, true);", "mc.player.sendOverlayMessage(message);"),
+]
+
 RULES = {
     "1.21.2": SINCE_1_21_2,
     "1.21.3": SINCE_1_21_2,
@@ -275,12 +412,19 @@ RULES = {
     "1.21.9": SINCE_1_21_9,
     "1.21.10": SINCE_1_21_9,
     "1.21.11": SINCE_1_21_11,
-    "26.1.2": SINCE_1_21_11,
-    "26.2": SINCE_1_21_11,
+    "26.1.2": SINCE_26_1,
+    "26.2": SINCE_26_1,
 }
 
 
 ALL = {**TARGETS, **UNSHIPPED}
+
+# Release order, which is not the order of the two tables above: the unshipped ones sit between
+# versions that are shipped. It matters because a variant directory applies to its version and
+# everything after it, so reading the order off `ALL` had 1.21.9 inheriting the 26.x drawing layer
+# and building against an API from a year later.
+ORDER = ["1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8",
+         "1.21.9", "1.21.10", "1.21.11", "26.1.2", "26.2"]
 
 
 def rules_for(version):
@@ -293,8 +437,7 @@ def variant_dirs_for(version):
     Oldest first means a newer directory's copy of a file wins, which is what inheriting from
     the previous version means in practice.
     """
-    order = list(ALL)
-    upto = order[:order.index(version) + 1]
+    upto = ORDER[:ORDER.index(version) + 1]
     return [VARIANTS / name for name in upto if (VARIANTS / name).is_dir()]
 
 
@@ -318,6 +461,29 @@ def apply_variants(version, target):
             overridden.add(destination.resolve())
 
     return overridden
+
+
+def unobfuscate_build(path):
+    """Turn the build script into the one a 26.x mod uses.
+
+    Rewritten rather than kept as a second file next to it: everything else in there, the Mod
+    Menu repository, the test wiring, the two ways of passing a real file to a test, is the same
+    in both worlds, and two copies of it would drift apart the first time either is touched.
+
+    What actually differs is small and all of it is forced:
+      - the plugin no longer remaps anything, so it is `fabric-loom`, not `fabric-loom-remap`
+      - there are no mappings to ask for
+      - a dependency is a plain dependency: nothing needs remapping on the way in either
+      - Java 25, because that is what the game runs on
+    """
+    text = path.read_text(encoding="utf-8")
+    text = text.replace("id 'net.fabricmc.fabric-loom-remap'", "id 'net.fabricmc.fabric-loom'")
+    text = text.replace("\tmappings loom.officialMojangMappings()\n", "")
+    text = text.replace("modImplementation ", "implementation ")
+    text = text.replace("modCompileOnly ", "compileOnly ")
+    text = text.replace("it.options.release = 21", "it.options.release = 25")
+    text = text.replace("JavaVersion.VERSION_21", "JavaVersion.VERSION_25")
+    path.write_text(text, encoding="utf-8")
 
 
 def report(errors, target, limit=12):
@@ -368,16 +534,29 @@ def build(version, api, errors_only=False):
 
         lines.append(line)
 
+    if unobfuscated(version):
+        lines = [f"modmenu_version={MODMENU[version]}" if line.startswith("modmenu_version=")
+                 else line for line in lines]
+
     properties.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    # Each jar declares the version it was compiled against. Without this they all keep the
-    # 1.21 range from the source tree and Fabric refuses to load them on anything newer.
+    # Each jar declares the version it was compiled against. Without this they all keep the range
+    # from the source tree and Fabric loads them on versions they were never compiled against.
+    # Matched by the key rather than by the value: the range in the tree has been edited twice,
+    # and both times this quietly stopped replacing anything.
     manifest = target / "src" / "main" / "resources" / "fabric.mod.json"
     accepts = ">=1.21 <1.21.2" if version in ("1.21", "1.21.1") else version
-    manifest.write_text(
-        manifest.read_text(encoding="utf-8").replace('"minecraft": ">=1.21 <1.21.2"',
-                                                     f'"minecraft": "{accepts}"'),
-        encoding="utf-8")
+    text = manifest.read_text(encoding="utf-8")
+    text = re.sub(r'"minecraft": "[^"]*"', f'"minecraft": "{accepts}"', text)
+
+    # 26.x runs on Java 25 and nothing older.
+    if unobfuscated(version):
+        text = re.sub(r'"java": ">=\d+"', '"java": ">=25"', text)
+
+    manifest.write_text(text, encoding="utf-8")
+
+    if unobfuscated(version):
+        unobfuscate_build(target / "build.gradle")
 
     overridden = apply_variants(version, target)
     applied = 0
@@ -402,7 +581,7 @@ def build(version, api, errors_only=False):
     result = subprocess.run(
         ["./gradlew", task, "-q", "--console=plain"],
         cwd=target, capture_output=True, text=True,
-        env={**__import__("os").environ, "JAVA_HOME": str(JDK)})
+        env={**__import__("os").environ, "JAVA_HOME": str(jdk_for(version))})
 
     if result.returncode != 0:
         errors = [line for line in (result.stdout + result.stderr).splitlines()

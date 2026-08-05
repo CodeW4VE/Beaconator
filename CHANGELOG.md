@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.2.0
+
+**The channel colours are the channel's own.** Turning the water lines down, and turning them any
+colour you like, both work now.
+
+- **Every state of a stretch has its own colour.** Dug-but-unfloored and iced used to borrow the
+  node colours from the Display tab, so the one button that said it coloured the channel moved the
+  cyan and left the yellow and the green exactly as they were. Five colours, each labelled with the
+  state it paints: **Not dug**, **Dug, no ice**, **Iced**, **Bad run**, **Drain**.
+- **An opacity setting for the water lines.** It existed in the config file and was never on screen.
+  The outline of a stretch follows it too instead of staying pinned at full strength, which is what
+  made turning it down look like it did nothing.
+- **A Look tab** on the Water page, between Setup and Cost, for how the channel is drawn: show it or
+  not, opacity, the five colours, and the sources-and-plates proposal. Setup keeps what the network
+  is made of. The colours were squeezed into Setup's right hand column, which is why there was room
+  for one of them and not three.
+
+**Minecraft 26.1.2, and what 2.1.0 was supposed to be.** 2.1.0 was tagged and never published: its
+release failed on the 26.x builds and nothing was uploaded, so this is the first release since
+2.0.0 and it carries both.
+
+- **A jar for 26.1.2**, which is the first Minecraft that ships unobfuscated. Everything about
+  building for it is different: there are no mappings to remap against any more, the build script
+  uses the plugin that does not remap, and the game wants Java 25. **Treat it as a beta.** It
+  compiles clean against the real 26.1.2 API, and unlike the 1.21 jars nobody has had it in a world
+  yet.
+- **26.2 is not here yet.** It replaced the path a mod's own geometry takes to the screen, not just
+  the names on it, and that is a rewrite rather than a port. It is next.
+- Every jar now declares the one version it was compiled for again. Since 2.1.0 they all claimed
+  `>=1.21 <26.3`, which let Fabric load a 1.21 jar on a version it was never built against.
+
 ## 2.1.0
 
 **Minecraft 26.1 and 26.2.** The mod now ships for the new version series. The jump from 1.21.11

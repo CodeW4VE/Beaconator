@@ -3,9 +3,11 @@ package xyz.w4ve.beaconator.render;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.blaze3d.platform.DepthTestFunction;
+import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -38,24 +40,24 @@ public final class Pipelines {
 
 	/** Translucent boxes: the coverage volumes, the beams and the gap strips. */
 	public static final RenderPipeline FACES =
-			faces("faces", DepthTestFunction.LEQUAL_DEPTH_TEST);
+			faces("faces", CompareOp.LESS_THAN_OR_EQUAL);
 
 	/** The same, drawn over the terrain rather than behind it. */
 	public static final RenderPipeline FACES_SEE_THROUGH =
-			faces("faces_see_through", DepthTestFunction.NO_DEPTH_TEST);
+			faces("faces_see_through", CompareOp.ALWAYS_PASS);
 
 	/** Wireframes, beacon markers and the pyramid footprint. */
 	public static final RenderPipeline LINES =
-			lines("lines", DepthTestFunction.LEQUAL_DEPTH_TEST);
+			lines("lines", CompareOp.LESS_THAN_OR_EQUAL);
 
 	/** The same, drawn over the terrain. */
 	public static final RenderPipeline LINES_SEE_THROUGH =
-			lines("lines_see_through", DepthTestFunction.NO_DEPTH_TEST);
+			lines("lines_see_through", CompareOp.ALWAYS_PASS);
 
 	private Pipelines() {
 	}
 
-	private static RenderPipeline faces(String name, DepthTestFunction depthTest) {
+	private static RenderPipeline faces(String name, CompareOp depthTest) {
 		return common(name, depthTest)
 				.withVertexShader("core/position_color")
 				.withFragmentShader("core/position_color")
@@ -69,7 +71,7 @@ public final class Pipelines {
 	 * there, and the mode has to be {@code LINES} rather than {@code DEBUG_LINES} so that each
 	 * segment is indexed as the quad the shader expands it into.
 	 */
-	private static RenderPipeline lines(String name, DepthTestFunction depthTest) {
+	private static RenderPipeline lines(String name, CompareOp depthTest) {
 		return common(name, depthTest)
 				.withVertexShader("core/rendertype_lines")
 				.withFragmentShader("core/rendertype_lines")
@@ -87,17 +89,19 @@ public final class Pipelines {
 	 * from inside as often as outside, and no depth writing so that overlapping translucent
 	 * volumes do not punch holes in each other.
 	 */
-	private static RenderPipeline.Builder common(String name, DepthTestFunction depthTest) {
+	private static RenderPipeline.Builder common(String name, CompareOp depthTest) {
 		return RenderPipeline.builder()
 				.withLocation("pipeline/beaconator_" + name)
 				// The two buffers every one of these shaders reads. Vanilla keeps them in a shared
 				// snippet that mods cannot reach, so they are spelled out.
 				.withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
 				.withUniform("Projection", UniformType.UNIFORM_BUFFER)
-				.withBlend(BlendFunction.TRANSLUCENT)
+				// Blending and depth are each one state object now rather than a call apiece.
+				// Not writing depth is part of the depth state, which is why there is no longer a
+				// withDepthWrite next to it.
+				.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
 				.withCull(false)
-				.withDepthWrite(false)
-				.withDepthTestFunction(depthTest);
+				.withDepthStencilState(new DepthStencilState(depthTest, false));
 	}
 
 	/**

@@ -9,8 +9,8 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldExtractionContext;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.world.phys.AABB;
@@ -57,7 +57,7 @@ public final class PerimeterRenderer {
 	 * Picks this frame's nodes. Runs while the frustum and the world are still reachable, which is
 	 * the whole reason this is a separate phase.
 	 */
-	public static void extract(WorldExtractionContext context) {
+	public static void extract(LevelExtractionContext context) {
 		visible = List.of();
 
 		PerimeterPlan plan = PlanManager.plan();
@@ -86,10 +86,11 @@ public final class PerimeterRenderer {
 			return;
 		}
 
-		visible = cull(plan, nodes, mc, config, context.frustum());
+		visible = cull(plan, nodes, mc, config,
+				context.levelState().cameraRenderState.cullFrustum);
 	}
 
-	public static void render(WorldRenderContext context) {
+	public static void render(LevelRenderContext context) {
 		List<GridNode> nodes = visible;
 		visible = List.of();
 
@@ -108,7 +109,7 @@ public final class PerimeterRenderer {
 			return;
 		}
 		Vec3 camera = mc.gameRenderer.getMainCamera().position();
-		PoseStack matrices = context.matrices();
+		PoseStack matrices = context.poseStack();
 
 		if (matrices == null) {
 			return;
