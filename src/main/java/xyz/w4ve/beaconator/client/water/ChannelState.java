@@ -28,13 +28,15 @@ public enum ChannelState {
 	/**
 	 * How this state is drawn, in the world and on the map alike.
 	 *
-	 * <p>The same three colours the pyramids use for the same three ideas: untouched, started,
-	 * finished bar one step. One thing to learn instead of two.
+	 * <p>Three colours for the same three ideas the pyramids use, untouched, started, finished bar
+	 * one step, but the channel's own, set on the Water tab next to the rest of the channel. They
+	 * used to be the node colours: the same yellow meant two different things and the button that
+	 * claimed to colour the channel only ever moved one third of it.
 	 */
 	public int colour(xyz.w4ve.beaconator.config.BeaconatorConfig config) {
 		return switch (this) {
-			case OPEN -> config.colorPartial;
-			case FLOORED -> config.colorPlaced;
+			case OPEN -> config.colorWaterOpen;
+			case FLOORED -> config.colorWaterFloored;
 			default -> config.colorWater;
 		};
 	}

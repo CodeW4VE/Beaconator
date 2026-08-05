@@ -137,6 +137,11 @@ public final class WaterRenderer {
 		double eyeZ = mc.player == null ? 0 : mc.player.getZ();
 		boolean any = false;
 
+		// The edge stays stronger than the face it outlines, which is what keeps two overlapping
+		// runs apart, but it follows the opacity setting rather than ignoring it. Pinned at one, a
+		// channel turned down to barely there kept a solid outline and nothing looked any fainter.
+		float edgeAlpha = Math.min(1.0f, config.waterOpacity * 1.6f);
+
 		for (WaterSegment run : water.runs()) {
 			if (mc.player != null && distanceSquared(run, eyeX, eyeZ) > limit) {
 				continue;
@@ -156,7 +161,7 @@ public final class WaterRenderer {
 						Math.max(stretch.x1(), stretch.x2()) + 1.0,
 						Math.max(stretch.z1(), stretch.z2()) + 1.0,
 						ShapeRenderer.red(colour), ShapeRenderer.green(colour),
-						ShapeRenderer.blue(colour), 1.0f);
+						ShapeRenderer.blue(colour), edgeAlpha);
 				any = true;
 			}
 		}

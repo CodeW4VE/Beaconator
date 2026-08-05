@@ -44,6 +44,7 @@ public final class Lang {
 		put("tab.shared", "Server", "Servidor");
 		put("tab.water_map", "Currents", "Corrientes");
 		put("tab.water_setup", "Setup", "Ajustes");
+		put("tab.water_look", "Look", "Aspecto");
 		put("tab.water_cost", "Cost", "Coste");
 		put("section.to_water", "Water", "Agua");
 		put("section.to_beacons", "Beacons", "Beacons");
@@ -125,9 +126,22 @@ public final class Lang {
 		put("water.fed", "This beacon already has water on it", "Este beacon ya tiene agua encima");
 		put("water.all_served", "All %d nodes have a line to the middle",
 				"Los %d nodos tienen línea al medio");
-		put("water.colour", "Channel", "Canal");
+		// Each colour says which state it paints. "Channel" alone left you pressing one button and
+		// watching two thirds of the channel stay exactly as it was.
+		put("water.colour", "Not dug", "Sin picar");
+		put("water.colour_open", "Dug, no ice", "Picado, sin hielo");
+		put("water.colour_floored", "Iced", "Con hielo");
 		put("water.colour_bad", "Bad run", "Línea mala");
 		put("water.colour_drain", "Drain", "Desagüe");
+		put("water.opacity", "Opacity %", "Opacidad %");
+		put("water.look_hint", "Three colours, in the order you build a stretch: not dug, dug, iced. "
+				+ "A stretch with water in it is not drawn at all.",
+				"Tres colores, en el orden en que se construye un tramo: sin picar, picado, con "
+				+ "hielo. El tramo que ya tiene agua no se dibuja.");
+		put("water.look_hint2", "Opacity is for the world only. The map keeps its own colours solid "
+				+ "so a line stays readable over the terrain.",
+				"La opacidad es solo para el mundo. En el mapa los colores van sólidos para que la "
+				+ "línea se siga leyendo sobre el terreno.");
 		put("water.source_every", "Source every", "Fuente cada");
 		put("water.channel_y", "Channel Y", "Y del canal");
 		put("water.row_step", "Every nth row", "Una fila de cada");

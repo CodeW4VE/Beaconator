@@ -131,6 +131,16 @@ public class BeaconatorConfig {
 	public int colorWater = 0xFF35D6D6;
 	public int colorWaterBad = 0xFFFF3B30;
 	public int colorWaterDrain = 0xFFFFD23F;
+	/**
+	 * A stretch that is dug but has no ice under it, and one that is floored and waiting for water.
+	 *
+	 * <p>Their own colours rather than the node ones they used to borrow. Sharing them read well on
+	 * paper, one idea instead of two, and terribly in the world: the channel is what you look at
+	 * while you dig it, and the button on this tab that says it colours the channel left the two
+	 * states you spend the most time staring at exactly as they were.
+	 */
+	public int colorWaterOpen = 0xFFFFD23F;
+	public int colorWaterFloored = 0xFF57E36B;
 
 	// -- editing --------------------------------------------------------------
 	/** Scrolling in edit mode grows and shrinks the grid instead of changing hotbar slot. */

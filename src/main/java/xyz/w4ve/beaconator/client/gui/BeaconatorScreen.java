@@ -97,6 +97,7 @@ public class BeaconatorScreen extends Screen {
 
 		WATER_MAP("tab.water_map", Section.WATER),
 		WATER_SETUP("tab.water_setup", Section.WATER),
+		WATER_LOOK("tab.water_look", Section.WATER),
 		WATER_COST("tab.water_cost", Section.WATER);
 
 		private final String key;
@@ -236,7 +237,7 @@ public class BeaconatorScreen extends Screen {
 				.build());
 
 		boolean needsPlan = activeTab != Tab.PLAN && activeTab != Tab.DISPLAY
-				&& activeTab != Tab.KEYS && activeTab != Tab.SHARED;
+				&& activeTab != Tab.KEYS && activeTab != Tab.SHARED && activeTab != Tab.WATER_LOOK;
 
 		// The water page keeps the beacons map's own view, so turning the page lands you looking at
 		// the same piece of the world rather than back at the whole perimeter.
@@ -254,6 +255,7 @@ public class BeaconatorScreen extends Screen {
 				case MAP -> initMap();
 				case WATER_MAP -> initWater();
 				case WATER_SETUP -> initWaterSetup();
+				case WATER_LOOK -> initWaterLook();
 				case WATER_COST -> initWaterCost();
 				case PLAN -> initPlan();
 				case GRID -> initGrid();
@@ -704,7 +706,6 @@ public class BeaconatorScreen extends Screen {
 	private void initWaterSetup() {
 		PerimeterPlan plan = PlanManager.plan();
 		WaterPlan water = plan.water();
-		BeaconatorConfig config = BeaconatorConfig.get();
 		int left = width / 2 - 154;
 		int right = width / 2 + 4;
 		int y = 40;
@@ -763,22 +764,62 @@ public class BeaconatorScreen extends Screen {
 			waterTouched = true;
 		}, 1, 8);
 
-		onOff(right, y, "water.show", config.renderWater, value -> config.renderWater = value);
-		colourButton(right, y + step, 150, "water.colour", () -> config.colorWater,
-				value -> config.colorWater = value);
-		colourButton(right, y + step * 2, 150, "water.colour_bad", () -> config.colorWaterBad,
-				value -> config.colorWaterBad = value);
-		colourButton(right, y + step * 3, 150, "water.colour_drain", () -> config.colorWaterDrain,
-				value -> config.colorWaterDrain = value);
-
-		onOff(right, y + step * 4, "water.fittings", config.showFittings,
-				value -> config.showFittings = value);
-
 		addRenderableWidget(Button.builder(Lang.c("water.intro_again"), button -> {
 			BeaconatorConfig.get().waterIntroSeen = false;
 			BeaconatorConfig.get().save();
 			rebuildWidgets();
-		}).bounds(right, y + step * 5, 150, 20).build());
+		}).bounds(right, y, 150, 20).build());
+	}
+
+	/**
+	 * How the channel is drawn, which is a different question from what it is made of.
+	 *
+	 * <p>Its own tab because there are eight of these and Setup had room for four. They were squeezed
+	 * into the right hand column there, which is how the channel ended up with one colour button for
+	 * three colours: there was nowhere to put the other two.
+	 */
+	private void initWaterLook() {
+		BeaconatorConfig config = BeaconatorConfig.get();
+		int left = width / 2 - 154;
+		int right = width / 2 + 4;
+		int y = 40;
+		int step = Math.clamp((height - 90 - y) / 6, 22, 30);
+
+		onOff(left, y, "water.show", config.renderWater, value -> config.renderWater = value);
+
+		// The channel is drawn over the ground you are standing on. Turned all the way up it hides
+		// what you are digging; there was no way to turn it down at all before this.
+		stepper(right, y, Lang.t("water.opacity"), () -> Math.round(config.waterOpacity * 100),
+				value -> {
+					config.waterOpacity = Math.clamp(value / 100.0f, 0.0f, 1.0f);
+					config.save();
+				}, 0, 100, 5);
+
+		// The three states of a stretch, in the order you build them, each with its own colour and
+		// its label saying which state it is. "Channel" on its own told you nothing about why
+		// changing it left two thirds of the channel exactly as it was.
+		colourButton(left, y + step, 150, "water.colour", () -> config.colorWater,
+				value -> config.colorWater = value);
+		colourButton(right, y + step, 150, "water.colour_open", () -> config.colorWaterOpen,
+				value -> config.colorWaterOpen = value);
+		colourButton(left, y + step * 2, 150, "water.colour_floored", () -> config.colorWaterFloored,
+				value -> config.colorWaterFloored = value);
+		colourButton(right, y + step * 2, 150, "water.colour_drain", () -> config.colorWaterDrain,
+				value -> config.colorWaterDrain = value);
+		colourButton(left, y + step * 3, 150, "water.colour_bad", () -> config.colorWaterBad,
+				value -> config.colorWaterBad = value);
+
+		onOff(right, y + step * 3, "water.fittings", config.showFittings,
+				value -> config.showFittings = value);
+	}
+
+	/** The three states of a stretch and what each colour means, under the buttons that set them. */
+	private void renderWaterLook(GuiGraphics graphics) {
+		int left = width / 2 - 154;
+		int y = height - 92;
+		graphics.drawString(font, fit(Lang.t("water.look_hint"), width - 16), left, y, DIM_COLOR, false);
+		graphics.drawString(font, fit(Lang.t("water.look_hint2"), width - 16), left, y + 12,
+				DIM_COLOR, false);
 	}
 
 	/** What is set right now, in words, under the buttons that set it. */
@@ -1889,12 +1930,12 @@ public class BeaconatorScreen extends Screen {
 		layerDown.active = LayerFilter.active();
 		addRenderableWidget(layerDown);
 
-		// The water lines get one row here rather than a tab of their own settings: seeing them or
-		// not is the same kind of choice as seeing the coverage or not.
+		// Seeing the water lines or not is the same kind of choice as seeing the coverage or not, so
+		// the toggle stays here with its neighbours. Their colours do not: they belong with the
+		// other five on Water > Look, and one of the five sitting here on its own was read as the
+		// colour of the whole channel.
 		onOff(left, layerY + step, "water.show", config.renderWater,
 				value -> config.renderWater = value);
-		colourButton(right, layerY + step, 150, "water.materials", () -> config.colorWater,
-				value -> config.colorWater = value);
 	}
 
 	// ----------------------------------------------------------------- actions
@@ -2228,6 +2269,8 @@ public class BeaconatorScreen extends Screen {
 			renderWaterCost(graphics);
 		} else if (activeTab == Tab.WATER_SETUP && PlanManager.hasPlan()) {
 			renderWaterSetup(graphics);
+		} else if (activeTab == Tab.WATER_LOOK) {
+			renderWaterLook(graphics);
 		}
 
 		if (!status.isEmpty()) {
