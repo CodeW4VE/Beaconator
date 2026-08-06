@@ -295,6 +295,11 @@ public final class WaterNetwork {
 	}
 
 	/** Where the network drains: the block that was picked, or the middle of the grid. */
+	/** Where a plan would drain, without building the network to find out. */
+	public static long drainKey(PerimeterPlan plan, WaterSpec spec) {
+		return drain(plan, spec);
+	}
+
 	private static long drain(PerimeterPlan plan, WaterSpec spec) {
 		return spec.sink() == null
 				? pack(plan.centerX(), plan.centerZ())
@@ -533,6 +538,34 @@ public final class WaterNetwork {
 		return new int[] {x(sink), z(sink)};
 	}
 
+	/**
+	 * Which way the water goes, block by block: every block of channel mapped to the next one on
+	 * its way to the drain.
+	 *
+	 * <p>This is the answer to "which way does this bit of the channel flow", and it is not the
+	 * same question as "which way was this run drawn". A run is stored end to end in whatever
+	 * order it was laid down, and half of them point away from the drain; the network is a tree
+	 * rooted at the drain, so the only direction that means anything is the one that walks down
+	 * that tree. Anything that places a source, cuts a current or reads the world has to use this,
+	 * or it ends up proposing two currents that meet nose to nose in the middle of a run.
+	 *
+	 * <p>Blocks that cannot reach the drain are not in here at all. They have no downstream, which
+	 * is exactly what {@link #disconnected()} is about.
+	 */
+	public Map<Long, Long> downstream() {
+		return flood().parent();
+	}
+
+	/** How far each block of channel is from the drain, along the channel. */
+	public Map<Long, Integer> blockDistances() {
+		return flood().distance();
+	}
+
+	/** The blocks of channel, as packed keys. */
+	public Set<Long> blocks() {
+		return blocks;
+	}
+
 	/** Nodes left without a line, which is what cutting coverage back actually costs. */
 	public List<NodeKey> orphans() {
 		return orphans;
@@ -707,16 +740,17 @@ public final class WaterNetwork {
 
 	public WaterBudget budget() {
 		int channel = channelBlocks();
-		int sources = 0;
 
-		for (WaterSegment segment : segments) {
-			sources += Math.ceilDiv(segment.length(), spec.sourceEvery());
-		}
-
+		// Counted from the same place they get drawn and built. The bill used to work the buckets
+		// out as length over spacing and the plates as one per bucket, while the marks in the world
+		// came from the positions themselves: they disagreed wherever two runs shared a block, and
+		// the bill knew nothing about chunk borders adding a source or a plate walking upstream.
+		WaterFittings fittings = WaterFittings.of(this);
 		int junctions = junctions();
 
-		return new WaterBudget(spec, channel, channel, sources, sources + junctions, junctions,
-				channel * 2, trip(), entries.size(), orphans.size(), blocked.size());
+		return new WaterBudget(spec, channel, channel, fittings.sources().size(),
+				fittings.stops().size(), junctions, channel * 2, trip(), entries.size(),
+				orphans.size(), blocked.size());
 	}
 
 	/** How the trips in this network come out, which is the number to judge a layout by. */

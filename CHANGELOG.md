@@ -1,5 +1,84 @@
 # Changelog
 
+## 2.3.0
+
+**Everything flows to the drain.** The drain is the block you point at and press the button on,
+and it is the only place in the network that means anything: every current exists to get an item
+there. The sources and plates did not know that. They were worked out by following each run from
+whichever end it happened to be stored at, and a run is stored in the order it was drawn or laid,
+so half of them pointed the wrong way. That is where the sources pushing away from the middle came
+from, and the plates dropped into the middle of a straight stretch where nothing was meeting
+anything.
+
+- **They are worked out on the tree of blocks rooted at the drain now**, walked from every dead end
+  down to the middle, so downstream means downstream everywhere and a plate only lands where two
+  currents genuinely meet. There is a test that checks every single fitting of a real perimeter
+  gets closer to the drain, which is the check that was missing.
+- **Nothing is placed on the drain itself.** It is the end of the line: a source there has nowhere
+  to push but backwards.
+- **Water you already poured counts.** Before drawing a fitting the mod asks the world which way
+  the water in that block is already going, and if it is already heading for the drain there is
+  nothing to propose: the channel works as built. Same for a plate that is already down. A finished
+  stretch stops being drawn, the way a dug stretch already did.
+
+**Two rules the channel now keeps everywhere.** Both come from building one rather than drawing
+one, and both are checked against a whole perimeter in the tests.
+
+- **No two sources ever touch.** Water next to water is one pool with no current in it, which is
+  the one way to build this that moves nothing at all. There is always a plate between one source
+  and the next.
+- **No block of channel is left empty.** Every single one ends up with water in it or a plate on
+  it. Water reaches seven blocks past its source whatever the spacing says, so anything beyond that
+  gets a plate rather than a bare block of ice, which is the hardest thing in a finished network to
+  find once drops start going missing. Big Culo: 8,514 blocks of channel, 7,417 wet, 1,097 plated,
+  nothing empty. Widening the source spacing now trades buckets for plates instead of thinning the
+  channel out.
+- Where the two rules disagree, the border wins: a gap on a chunk border is filled with water, never
+  with a plate.
+- **No more plates in threes.** Two branches ending a block apart asked for a plate each and got
+  them. Past the first, they were cutting a current that had already been cut.
+
+**Chunk borders.** Flowing water pushes an item every tick; bare ice only keeps the speed it
+already had, and a chunk that unloads and comes back does not give it back. Out at the far end of
+a perimeter, unloaded is the normal state, so the channel now treats a border as the one part of
+the network that is not a matter of taste.
+
+- **A source on the last block before every border**, with the spacing restarting there, so the
+  item crosses under power instead of coasting. Big Culo: 532 crossings, thirteen buckets more than
+  the old spacing, because the count restarts rather than adding to it.
+- **A plate never lands on either side of a border.** One that would has walked back upstream to
+  the first free block. Same job, one block earlier.
+- **A corner on a border gets a red post and a cross on the map**, and is left where it is: moving
+  it means moving the run and every trip through it. Big Culo has three.
+- **The Cost tab counts the borders**, in green when they are all under moving water.
+
+**The plates go where the bill was already charging for them:** one block upstream of every source,
+where two currents meet, plus one at the end of each run. The bill said eleven hundred and the
+world drew twenty nine; now they are the same plates. Sources are all placed before any plate is,
+so a plate on a block two runs share cannot take the block the other run's source needed.
+
+**Ghost blocks, and the plates are part of the schematic now.** Walk up to a plate and the mark
+turns into an actual pressure plate, the block with its own model and its own texture, sitting in
+the square it goes in. The game draws it, the same way a schematic mod does. Step back and it is a
+post again, because a plate seen from four hundred blocks away is nothing at all.
+
+- **It disappears when you place it.** A ghost is a thing that is missing, so the moment the plate
+  is in the world the mod stops drawing one there, and a finished stretch of channel looks
+  finished. Same for a source once the water is in. That is the whole reason to draw them.
+- **Assisted placement handles plates.** They are part of what the plan wants now, so easy place
+  puts one in your hand and lets you place it where the network asked for one, and with strict
+  placement on it stops you putting one anywhere else. Only while the plan has a channel: a
+  perimeter with no water lines has no opinion about your plates. Water is still yours to pour, a
+  bucket not being a block placement.
+- A source stays a translucent box, block sized and at the height water sits at. Fluids do not go
+  through the block renderer at all, so there is no block to ask the game for.
+- Not on 26.x. The single block call the rest of this rides on does not exist there any more. The
+  marks stay marks on that jar; everything else, the schematic included, is identical.
+
+**Following Litematica no longer talks over it.** Mirroring their easy place toggle wrote a line of
+our own on the action bar, which is where they had just written theirs, so pressing their key
+showed their message and then ours on top of it. It syncs quietly now. The state is on the HUD.
+
 ## 2.2.0
 
 **The channel colours are the channel's own.** Turning the water lines down, and turning them any

@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import xyz.w4ve.beaconator.model.PerimeterPlan;
+import xyz.w4ve.beaconator.model.water.WaterFittings;
 import xyz.w4ve.beaconator.model.water.WaterNetwork;
 import xyz.w4ve.beaconator.model.water.WaterSegment;
 
@@ -47,6 +48,21 @@ public final class WaterCache {
 		}
 
 		return network;
+	}
+
+	/**
+	 * The sources, plates and border warnings, worked out on the same clock as the network.
+	 *
+	 * <p>Same reason as the network: it walks every block of every run, which is fine once and
+	 * silly once a frame. The map, the world render and the bill all read it from here so they
+	 * cannot disagree about where a bucket goes.
+	 */
+	public static WaterFittings fittings(PerimeterPlan current) {
+		if (current == null) {
+			return null;
+		}
+
+		return current.water().fittings(current);
 	}
 
 	/** Runs that would be dug through a pyramid base, which is what gets drawn in red. */

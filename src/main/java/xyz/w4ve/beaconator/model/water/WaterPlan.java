@@ -26,6 +26,10 @@ public final class WaterPlan {
 	private final List<WaterSegment> runs = new ArrayList<>();
 	private boolean edited;
 	private int revision;
+	private WaterFittings fittings;
+	private int fittingsRevision = -1;
+	private long drainAt = Long.MIN_VALUE;
+	private Set<Long> plates;
 
 	public WaterSpec spec() {
 		return spec;
@@ -231,6 +235,51 @@ public final class WaterPlan {
 	/** Costs and measures what is actually in here, drawn runs and all. */
 	public WaterNetwork network(PerimeterPlan plan) {
 		return WaterNetwork.over(plan, spec, runs);
+	}
+
+	/**
+	 * The sources and plates, worked out once per change.
+	 *
+	 * <p>Cached here rather than in the client because the schematic asks for it: assisted
+	 * placement wants to know whether a block belongs to the plan once per frame, and this walks
+	 * every block of the channel twice to answer. Watched on the revision, plus the drain, because
+	 * the drain is the root of the whole thing and moving the grid moves it without touching a
+	 * single run.
+	 */
+	public WaterFittings fittings(PerimeterPlan plan) {
+		// The drain on its own, which is arithmetic, rather than the whole network, which is a
+		// flood of ten thousand blocks: this is asked once a frame and rebuilt almost never.
+		long drain = WaterNetwork.drainKey(plan, spec);
+
+		if (fittings == null || fittingsRevision != revision || drainAt != drain) {
+			fittings = WaterFittings.of(network(plan));
+			fittingsRevision = revision;
+			drainAt = drain;
+			plates = null;
+		}
+
+		return fittings;
+	}
+
+	/** True where the network wants a plate, which is the one fitting that is a placeable block. */
+	public boolean plateAt(PerimeterPlan plan, int x, int y, int z) {
+		if (runs.isEmpty() || y != spec.waterY()) {
+			return false;
+		}
+
+		// Asked for first, and only then the set built: working them out is what clears the set,
+		// so doing it the other way round throws the set away half filled.
+		WaterFittings current = fittings(plan);
+
+		if (plates == null) {
+			plates = new HashSet<>();
+
+			for (WaterFittings.Fitting plate : current.stops()) {
+				plates.add(plate.key());
+			}
+		}
+
+		return plates.contains(ChunkCrossings.key(x, z));
 	}
 
 	private static boolean covers(WaterSegment run, int x, int z) {

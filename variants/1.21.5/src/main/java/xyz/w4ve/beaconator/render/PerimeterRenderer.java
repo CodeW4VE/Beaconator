@@ -89,6 +89,9 @@ public final class PerimeterRenderer {
 		matrices.translate(-camera.x, -camera.y, -camera.z);
 		Matrix4f matrix = matrices.last().pose();
 
+		// Real blocks first, while the state is still the one the game draws blocks with.
+		GhostBlocks.render(plan, config, matrices, context.consumers(), camera);
+
 		drawFaces(plan, visible, mc, config, matrix);
 		drawLines(plan, visible, mc, config, matrix);
 

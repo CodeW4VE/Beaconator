@@ -136,7 +136,10 @@ public final class EasyPlace {
 	private static boolean isPlanBlock(PerimeterPlan plan, ItemStack stack) {
 		return matches(stack, plan.pyramidBlock())
 				|| matches(stack, PerimeterPlan.BEACON_BLOCK)
-				|| matches(stack, plan.markerBlock());
+				|| matches(stack, plan.markerBlock())
+				// Only while there is a channel to get them wrong in. A perimeter with no water
+				// lines has no opinion about where your plates go.
+				|| (!plan.water().isEmpty() && matches(stack, PerimeterPlan.PLATE_BLOCK));
 	}
 
 	private static boolean matches(ItemStack stack, String blockId) {

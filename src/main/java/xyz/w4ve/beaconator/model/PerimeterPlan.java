@@ -53,6 +53,9 @@ public final class PerimeterPlan {
 	private final xyz.w4ve.beaconator.model.water.WaterPlan water =
 			new xyz.w4ve.beaconator.model.water.WaterPlan();
 
+	/** What a flow stop is made of, and the one channel fitting you place like any other block. */
+	public static final String PLATE_BLOCK = "minecraft:stone_pressure_plate";
+
 	public PerimeterPlan(String name, String dimension, int centerX, int beaconY, int centerZ) {
 		this.name = name;
 		this.dimension = dimension;
@@ -507,8 +510,17 @@ public final class PerimeterPlan {
 	 * so the only node that can reach a position is the one whose cell it falls in, plus any node
 	 * that was dragged out of its own cell. There are rarely more than a few of those, which
 	 * keeps this cheap enough to call once per frame for assisted placement.
+	 *
+	 * <p>The channel's plates count as part of the plan, so everything that reads the schematic
+	 * treats them like any other block of it: assisted placement puts one in your hand and lets you
+	 * place it, and it stops you putting one anywhere the network did not ask for. Water sources do
+	 * not, because a bucket is not a block placement and nothing here could help with it.
 	 */
 	public String blockAt(int x, int y, int z) {
+		if (water.plateAt(this, x, y, z)) {
+			return PLATE_BLOCK;
+		}
+
 		NodeKey cell = GridGenerator.nearestKey(centerX, centerZ, spacing, x, z);
 
 		if (extents.contains(cell.i(), cell.j())) {

@@ -325,20 +325,31 @@ public final class MapView {
 			graphics.vLine(nodeX, nodeZ - 3, nodeZ + 3, config.colorWaterBad);
 		}
 
-		if (config.showFittings) {
-			WaterFittings fittings = WaterFittings.of(water);
+		WaterFittings fittings = WaterCache.fittings(plan);
 
-			for (int[] source : fittings.sources()) {
-				int sx = (int) Math.round(worldToScreenX(source[0] + 0.5, x, width));
-				int sz = (int) Math.round(worldToScreenZ(source[1] + 0.5, y, height));
+		if (config.showFittings && fittings != null) {
+			for (WaterFittings.Fitting source : fittings.sources()) {
+				int sx = (int) Math.round(worldToScreenX(source.x() + 0.5, x, width));
+				int sz = (int) Math.round(worldToScreenZ(source.z() + 0.5, y, height));
 				graphics.fill(sx - 1, sz - 1, sx + 2, sz + 2, 0xFF000000 | (config.colorWater & 0xFFFFFF));
 			}
 
-			for (int[] stop : fittings.stops()) {
-				int sx = (int) Math.round(worldToScreenX(stop[0] + 0.5, x, width));
-				int sz = (int) Math.round(worldToScreenZ(stop[1] + 0.5, y, height));
+			for (WaterFittings.Fitting stop : fittings.stops()) {
+				int sx = (int) Math.round(worldToScreenX(stop.x() + 0.5, x, width));
+				int sz = (int) Math.round(worldToScreenZ(stop.z() + 0.5, y, height));
 				graphics.fill(sx - 2, sz - 2, sx + 3, sz + 3,
 						0xFF000000 | (config.colorWaterDrain & 0xFFFFFF));
+			}
+		}
+
+		// Borders that need a look, shown whether or not the proposal is: a cross, same mark as an
+		// orphaned node, because it means the same thing. Something here will swallow items.
+		if (fittings != null) {
+			for (int[] warning : fittings.warnings()) {
+				int wx = (int) Math.round(worldToScreenX(warning[0] + 0.5, x, width));
+				int wz = (int) Math.round(worldToScreenZ(warning[1] + 0.5, y, height));
+				graphics.hLine(wx - 2, wx + 2, wz, config.colorWaterBad);
+				graphics.vLine(wx, wz - 2, wz + 2, config.colorWaterBad);
 			}
 		}
 

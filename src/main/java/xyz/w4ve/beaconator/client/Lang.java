@@ -172,6 +172,10 @@ public final class Lang {
 				"%d nodos servidos, %d sin línea, %d excluidos y fuera");
 		put("water.cost_flow", "%d water buckets, %d pressure plates, %d junctions",
 				"%d cubos de agua, %d placas de presión, %d cruces");
+		put("water.cost_borders_ok", "%d chunk borders, every one of them under moving water",
+				"%d bordes de chunk, todos con agua en movimiento");
+		put("water.cost_borders", "%d chunk borders, %d marked: look at the red posts",
+				"%d bordes de chunk, %d marcados: mirá los postes rojos");
 		put("water.see_cost", "Water lines: %s channel, %d shulkers of ice. Water > Cost has the rest",
 				"Corrientes: %s de canal, %d shulkers de hielo. El resto en Agua > Coste");
 		put("water.show", "Show in world", "Ver en el mundo");

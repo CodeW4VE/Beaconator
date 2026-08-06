@@ -166,6 +166,25 @@ out to change how fast an item actually moves, which is a thing to settle in gam
 5. **Water and plates.** Last on purpose: it is the only part whose correctness the compiler
    cannot check.
 
+**Done in 2.3.0: the chunk borders.**
+
+`ChunkCrossings` knows where the channel steps from one chunk into the next, and `WaterFittings`
+treats those two blocks as the one part of the network that is not a proposal:
+
+- **A source on the block before every crossing**, with the spacing restarting there, so the seam
+  is under moving water and the item crosses under power. Costs about a bucket per crossing
+  because the count restarts rather than adding: 532 crossings on Big Culo, thirteen buckets.
+- **No plate on either side of a crossing.** One that would land there walks back upstream to the
+  first clear block. A run with nowhere clear is reported instead of being placed.
+- **Corners on a crossing are reported and not moved**, because moving one means moving the run
+  and every trip through it. Three on Big Culo.
+
+The reason is momentum: flowing water pushes an item every tick, bare ice only keeps what the item
+already had, and a chunk that unloads and comes back does not give it back. The far end of a
+perimeter is unloaded almost all the time, so a crossing is exactly where a dry stretch or a plate
+turns into an item that never arrives. This is also why the rule is enforced rather than suggested:
+unlike everything else in `WaterFittings` it is not a guess about how water behaves.
+
 ## What worries me
 
 - **I cannot test the flow.** Water is decided by the game. A channel that is right on paper can

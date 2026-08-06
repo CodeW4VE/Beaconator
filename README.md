@@ -161,8 +161,26 @@ first time you open it.
 A run dug through a pyramid base is drawn in red and a node the channel never reaches gets a
 cross. Neither is refused: it says what it would break and the call is yours.
 
-The water sources and the pressure plates are counted, not placed, and the network does not export
-to a litematic yet. Those are the parts only a real world can check.
+**Chunk borders are the exception.** Flowing water pushes an item every tick; bare ice only keeps
+the speed it already had, and a chunk that unloads and comes back does not give it back. Out at
+the far end of a perimeter, unloaded is the normal state. So a source always sits on the last
+block before a border, the spacing starts counting again there, and a pressure plate is never put
+on either side of one. A corner that lands on a border cannot be moved without moving the run, so
+it gets a red post in the world and a cross on the map instead. The Cost tab counts the borders
+and turns green when every one of them is under moving water.
+
+Turn **Sources and plates** on in **Water > Look** and the mod shows both: a source every so many
+blocks, all pushing towards the drain, and a plate one block upstream of each one, where that
+current meets the one behind it. Everything is worked out walking the channel from its dead ends
+down to the drain, so no current ever points away from it, and water you have already poured
+counts: if the block is already flowing the right way, there is nothing left to propose there. From a distance they are posts you can see against the sky. Walk up and a
+plate becomes an actual pressure plate, model and texture and all, sitting in the square it goes
+in, so you can put yours where it is. A source stays a translucent box at the height water sits
+at: fluids are not drawn by the block renderer, so there is no block to ask the game for. On the
+26.x jar both stay marks, because that version has no single block call to use.
+
+The water sources and the pressure plates are counted and shown, not placed, and the network does
+not export to a litematic yet. Those are the parts only a real world can check.
 
 ## Keys
 

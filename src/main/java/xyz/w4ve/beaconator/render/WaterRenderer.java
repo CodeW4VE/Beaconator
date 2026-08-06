@@ -23,7 +23,39 @@ import xyz.w4ve.beaconator.model.water.WaterSegment;
  * thousand quads a frame for something you look at from four hundred blocks up.
  */
 public final class WaterRenderer {
+	/**
+	 * How close you have to be for a fitting to be drawn where it goes rather than as a mark
+	 * saying one goes somewhere here.
+	 *
+	 * <p>Both are needed and neither does the other's job. A pressure plate is one sixteenth of a
+	 * block tall: from the other side of a perimeter it is nothing at all, so far away it stays a
+	 * post you can see against the sky. Standing in the trench with a stack of plates in hand the
+	 * post is useless, and what you want is the block in its square, which is what
+	 * {@link GhostBlocks} draws. Water is a box either way: a fluid cannot go through the block
+	 * renderer, so up close it becomes a block sized one at the height water sits at.
+	 */
+	private static final double GHOST_RANGE = 48.0;
+
+	/** Water sits a fifteenth short of the top of its block. */
+	private static final double WATER_HEIGHT = 0.875;
+
 	private WaterRenderer() {
+	}
+
+	/** True when a fitting is close enough to be worth drawing where it actually goes. */
+	static boolean near(WaterFittings.Fitting fitting, double eyeX, double eyeZ) {
+		double dx = eyeX - (fitting.x() + 0.5);
+		double dz = eyeZ - (fitting.z() + 0.5);
+		return dx * dx + dz * dz <= GHOST_RANGE * GHOST_RANGE;
+	}
+
+	/** A source, at the size and height the water will be. */
+	private static void ghost(BufferBuilder buffer, Matrix4f matrix, WaterFittings.Fitting fitting,
+			double y, double height, int colour, float opacity) {
+		ShapeRenderer.boxFaces(buffer, matrix,
+				fitting.x(), y, fitting.z(), fitting.x() + 1.0, y + height, fitting.z() + 1.0,
+				ShapeRenderer.red(colour), ShapeRenderer.green(colour), ShapeRenderer.blue(colour),
+				opacity);
 	}
 
 	/** True when there is anything to draw, which is what decides whether a buffer is worth opening. */
@@ -82,25 +114,69 @@ public final class WaterRenderer {
 		// The fittings, when they are asked for: a source is a post in the channel, a stop is a flat
 		// pad across it. Small, because they are a proposal sitting on top of a real plan.
 		if (config.showFittings) {
-			WaterFittings fittings = WaterFittings.of(water);
+			WaterFittings fittings = WaterCache.fittings(plan);
 			int sourceColour = config.colorWater;
-			int stopColour = config.colorWaterDrain;
 
-			for (int[] source : fittings.sources()) {
-				ShapeRenderer.boxFaces(buffer, matrix,
-						source[0] + 0.3, y, source[1] + 0.3,
-						source[0] + 0.7, y + 1.6, source[1] + 0.7,
-						ShapeRenderer.red(sourceColour), ShapeRenderer.green(sourceColour),
-						ShapeRenderer.blue(sourceColour), config.waterOpacity);
+			for (WaterFittings.Fitting source : fittings.sources()) {
+				// Poured already: nothing left to say about it. Only asked of the ones close
+				// enough to be reading the world for anyway.
+				if (Fittings.done(mc, source, (int) y, true)) {
+					continue;
+				}
+
+				if (near(source, eyeX, eyeZ)) {
+					// The block itself, where a source ends up: full width, and the height water
+					// actually sits at. Close enough to build from, so it is drawn to be built
+					// from rather than to be spotted.
+					ghost(buffer, matrix, source, y, WATER_HEIGHT, sourceColour,
+							config.waterOpacity);
+				} else {
+					ShapeRenderer.boxFaces(buffer, matrix,
+							source.x() + 0.3, y, source.z() + 0.3,
+							source.x() + 0.7, y + 1.6, source.z() + 0.7,
+							ShapeRenderer.red(sourceColour), ShapeRenderer.green(sourceColour),
+							ShapeRenderer.blue(sourceColour), config.waterOpacity);
+				}
+
 				any = true;
 			}
 
-			for (int[] stop : fittings.stops()) {
+			// Close up a plate is drawn as the block itself by GhostBlocks, so all this has to do
+			// is put a mark where one goes for as long as you are too far away to see a block one
+			// sixteenth of a block tall.
+			for (WaterFittings.Fitting stop : fittings.stops()) {
+				if (GhostBlocks.available() && near(stop, eyeX, eyeZ)) {
+					continue;
+				}
+
+				if (Fittings.done(mc, stop, (int) y, false)) {
+					continue;
+				}
+
+				int stopColour = config.colorWaterDrain;
 				ShapeRenderer.boxFaces(buffer, matrix,
-						stop[0] + 0.1, y + 0.9, stop[1] + 0.1,
-						stop[0] + 0.9, y + 1.05, stop[1] + 0.9,
+						stop.x() + 0.1, y + 0.9, stop.z() + 0.1,
+						stop.x() + 0.9, y + 1.05, stop.z() + 0.9,
 						ShapeRenderer.red(stopColour), ShapeRenderer.green(stopColour),
 						ShapeRenderer.blue(stopColour), 0.9f);
+				any = true;
+			}
+		}
+
+		// Chunk borders with something on them that momentum cannot survive. Drawn whether or not
+		// the fittings are shown, and tall, because unlike a bucket in the wrong place these are
+		// worth the walk out there before the ice goes in.
+		WaterFittings marks = WaterCache.fittings(plan);
+
+		if (marks != null) {
+			int badColour = config.colorWaterBad;
+
+			for (int[] warning : marks.warnings()) {
+				ShapeRenderer.boxFaces(buffer, matrix,
+						warning[0] + 0.35, y, warning[1] + 0.35,
+						warning[0] + 0.65, y + 3.0, warning[1] + 0.65,
+						ShapeRenderer.red(badColour), ShapeRenderer.green(badColour),
+						ShapeRenderer.blue(badColour), config.waterOpacity);
 				any = true;
 			}
 		}
@@ -166,7 +242,35 @@ public final class WaterRenderer {
 			}
 		}
 
+		// The ghosts get their edges too, and they are what makes them readable: a face at half
+		// opacity inside a trench you are standing in is a smudge, and the twelve lines of a box
+		// are what tell you which square it is in.
+		if (config.showFittings) {
+			WaterFittings fittings = WaterCache.fittings(plan);
+
+			if (fittings != null) {
+				for (WaterFittings.Fitting source : fittings.sources()) {
+					if (near(source, eyeX, eyeZ)) {
+						ghostEdges(buffer, matrix, source, y, WATER_HEIGHT, config.colorWater,
+								edgeAlpha);
+						any = true;
+					}
+				}
+
+				// The plate is a real block up close, and a real block outlined in the colour of
+				// the thing it is not would only make it harder to read.
+			}
+		}
+
 		return any;
+	}
+
+	private static void ghostEdges(BufferBuilder buffer, Matrix4f matrix,
+			WaterFittings.Fitting fitting, double y, double height, int colour, float alpha) {
+		ShapeRenderer.boxEdges(buffer, matrix,
+				fitting.x(), y, fitting.z(), fitting.x() + 1.0, y + height, fitting.z() + 1.0,
+				ShapeRenderer.red(colour), ShapeRenderer.green(colour), ShapeRenderer.blue(colour),
+				alpha);
 	}
 
 	/** Distance from the player to the nearest point of a run, squared. */

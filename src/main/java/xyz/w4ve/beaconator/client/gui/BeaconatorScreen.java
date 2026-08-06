@@ -59,6 +59,7 @@ import xyz.w4ve.beaconator.client.water.ChannelState;
 import xyz.w4ve.beaconator.client.water.WaterCache;
 import xyz.w4ve.beaconator.client.water.WaterScan;
 import xyz.w4ve.beaconator.model.water.WaterBudget;
+import xyz.w4ve.beaconator.model.water.WaterFittings;
 import xyz.w4ve.beaconator.model.water.WaterLayout;
 import xyz.w4ve.beaconator.model.water.WaterNetwork;
 import xyz.w4ve.beaconator.model.water.WaterPlan;
@@ -913,6 +914,19 @@ public class BeaconatorScreen extends Screen {
 		graphics.drawString(font, Lang.t("water.cost_flow", budget.waterSources(),
 				budget.flowStops(), budget.junctions()), left, y, DIM_COLOR, false);
 
+		// The chunk borders. A number nobody would think to ask for until the first drop goes
+		// missing, so it sits in the bill next to the buckets that keep them wet.
+		WaterFittings fittings = WaterCache.fittings(plan);
+
+		if (fittings != null) {
+			int flagged = fittings.warnings().size();
+			y += 12;
+			graphics.drawString(font, flagged == 0
+					? Lang.t("water.cost_borders_ok", fittings.crossings())
+					: Lang.t("water.cost_borders", fittings.crossings(), flagged), left, y,
+					flagged == 0 ? OK_COLOR : BeaconatorConfig.get().colorWaterBad, false);
+		}
+
 		int[] scanned = WaterScan.tally(plan);
 		int read = scanned[ChannelState.SOLID.ordinal()] + scanned[ChannelState.OPEN.ordinal()]
 				+ scanned[ChannelState.FLOORED.ordinal()] + scanned[ChannelState.FLOWING.ordinal()];
@@ -931,8 +945,12 @@ public class BeaconatorScreen extends Screen {
 					left, y, DIM_COLOR, false);
 		}
 
-		y += 14;
-		graphics.drawString(font, Lang.t("water.fittings_note"), left, y, DIM_COLOR, false);
+		// Only worth saying while the proposal is on screen, and the page is tall enough as it is
+		// now that the borders have a line of their own.
+		if (BeaconatorConfig.get().showFittings) {
+			y += 14;
+			graphics.drawString(font, Lang.t("water.fittings_note"), left, y, DIM_COLOR, false);
+		}
 
 		int blocked = budget.blockedRuns();
 		int lost = network.disconnected().size();

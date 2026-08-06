@@ -77,7 +77,15 @@ public final class LitematicaBridge {
 		}
 	}
 
-	/** Mirrors their toggle onto ours, telling the player the first time it happens. */
+	/**
+	 * Mirrors their toggle onto ours, and says nothing about it.
+	 *
+	 * <p>It used to put a line of its own on the action bar. That is the same line Litematica has
+	 * just written its own message on, so pressing their key showed their text for a frame and then
+	 * ours on top of it: we were overwriting the message of the mod we are following. Following
+	 * something means not talking over it. The state is on our HUD anyway, next to everything else
+	 * that is on.
+	 */
 	public static void tick() {
 		BeaconatorConfig config = BeaconatorConfig.get();
 
@@ -99,8 +107,5 @@ public final class LitematicaBridge {
 
 		config.easyPlace = theirs;
 		config.save();
-		PlanManager.actionBar(Component.literal("Beaconator easy place "
-				+ (theirs ? "on" : "off") + " (following Litematica)")
-				.withStyle(ChatFormatting.GRAY));
 	}
 }
