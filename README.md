@@ -60,7 +60,7 @@ Drop the jar in `mods/` and start the game. That is the whole install.
 Optional, and only if you want the whole team on one plan: put **the same jar** on the Fabric
 server as well. Without it the mod still works, you just keep your plan to yourself.
 
-## Never used it before? Start here
+## Getting started
 
 Beaconator is for one job: covering a large area in beacons, evenly, without holes, and knowing
 what you have left to build. If you are spawn proofing a perimeter, this is the mod.
@@ -220,7 +220,7 @@ cannot do.
 | `/bea` or `/bea gui` | Open the screen |
 | `/bea share` | Put the open plan on the server |
 
-## The geometry, if you are curious
+## The geometry
 
 A beacon with `level` pyramid layers reaches `10 * level + 10` blocks, so a full level 4 pyramid
 covers a square `101` blocks a side. Set the spacing to that and coverage lines up exactly with
