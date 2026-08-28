@@ -189,6 +189,17 @@ public class BeaconatorConfig {
 	 */
 	public Map<String, Integer> keyModifiers = new LinkedHashMap<>();
 
+	/**
+	 * The one time repair of the `open_screen` binding has been done.
+	 *
+	 * <p>That binding arrived after the first builds, and {@code options.txt} remembers an unbound
+	 * binding as firmly as a bound one, so the new default never reached anyone already playing.
+	 * The repair puts `B` back once. Kept as a flag rather than run on every start, because
+	 * "unbound" is also what it looks like when a player clears the key on purpose, and putting it
+	 * back every single launch is a mod fighting its own user.
+	 */
+	public boolean openScreenRepaired;
+
 	// -- session --------------------------------------------------------------
 	/**
 	 * Last plan opened on each server or world, so rejoining picks up where you left off instead

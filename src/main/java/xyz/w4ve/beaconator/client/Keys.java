@@ -165,16 +165,30 @@ public final class Keys {
 	private static boolean migrated;
 
 	/**
-	 * Puts Shift + B back on the screen binding for anyone who ran an earlier build.
+	 * Puts Shift + B back on the screen binding for anyone who ran an earlier build. Once, ever.
 	 *
 	 * <p>{@code options.txt} remembers every binding, including the ones left unbound, so changing
 	 * a default never reaches a player who has already started the game once: opening the screen
 	 * used to be a special case inside the edit mode key rather than a binding, and that saved
 	 * "unknown" beats the new default. Runs on the first tick, when the options are loaded, and
 	 * only touches a binding nobody has set to anything.
+	 *
+	 * <p>The flag lives in our own config, and is written whether or not the key needed moving.
+	 * Without it this ran on every single launch, and an unbound binding is also exactly what a
+	 * player who cleared that key on purpose has: they cleared it, closed the game, and found it
+	 * back on B the next time. A one time repair is a repair; the same repair every launch is the
+	 * mod overruling its own user.
 	 */
 	private static void migrateBindings(Minecraft mc) {
 		migrated = true;
+		BeaconatorConfig config = BeaconatorConfig.get();
+
+		if (config.openScreenRepaired) {
+			return;
+		}
+
+		config.openScreenRepaired = true;
+		config.save();
 
 		if (!OPEN_SCREEN.isUnbound()) {
 			return;

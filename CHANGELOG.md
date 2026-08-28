@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.3.1
+
+**Your keys stay where you put them.** Opening the screen used to be a special case inside the edit
+mode key rather than a binding of its own, so when it became one it needed a repair for anyone
+already playing: `options.txt` remembers an unbound binding as firmly as a bound one, and that
+saved "unknown" beats any new default. The repair worked. It also ran on every single launch, and
+"unbound" is exactly what a player who cleared that key on purpose has, so clearing it, closing the
+game and finding it back on `B` was the whole experience of trying to get rid of it. Vanilla paints
+both `B` bindings red as a conflict, which is a good reason to want one gone.
+
+- **It runs once now**, and writes that down in `beaconator.json` whether or not the key needed
+  moving. A one time repair is a repair; the same repair every launch is the mod overruling its own
+  user.
+
 ## 2.3.0
 
 **Everything flows to the drain.** The drain is the block you point at and press the button on,
