@@ -76,6 +76,7 @@ TARGETS = {
     "1.21.8": "0.136.1+1.21.8",
     "1.21.11": "0.141.6+1.21.11",
     "26.1.2": "0.155.2+26.1.2",
+    "26.3": "0.161.0+26.3",
 }
 
 # Measured, not shipped, and neither of these is worth shipping.
@@ -108,6 +109,7 @@ UNSHIPPED = {
 MODMENU = {
     "26.1.2": "18.0.0",
     "26.2": "20.0.1",
+    "26.3": "21.0.0",
 }
 
 
@@ -380,7 +382,7 @@ SINCE_26_1 = SINCE_1_21_11 + [
     ("protected void renderContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {",
      "protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY,\n"
      "\t\t\tfloat delta) {"),
-    ("renderDefaultSprite(graphics);", "extractDefaultSprite(graphics);"),
+    ("renderDefaultSprite(graphics);", "extractDefaultSprite(graphics);\n\t\textractDefaultLabel(graphics.textRenderer());"),
     ("public void renderContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered,",
      "public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY,\n"
      "\t\t\t\tboolean hovered,"),
@@ -414,6 +416,7 @@ RULES = {
     "1.21.11": SINCE_1_21_11,
     "26.1.2": SINCE_26_1,
     "26.2": SINCE_26_1,
+    "26.3": SINCE_26_1,
 }
 
 
@@ -424,7 +427,7 @@ ALL = {**TARGETS, **UNSHIPPED}
 # everything after it, so reading the order off `ALL` had 1.21.9 inheriting the 26.x drawing layer
 # and building against an API from a year later.
 ORDER = ["1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8",
-         "1.21.9", "1.21.10", "1.21.11", "26.1.2", "26.2"]
+         "1.21.9", "1.21.10", "1.21.11", "26.1.2", "26.2", "26.3"]
 
 
 def rules_for(version):
@@ -511,7 +514,7 @@ def build(version, api, errors_only=False):
     target.mkdir(parents=True)
 
     for item in ["src", "gradle", "gradlew", "build.gradle", "settings.gradle",
-                 "gradle.properties"]:
+                 "gradle.properties", "LICENSE"]:
         source = ROOT / item
         destination = target / item
 
@@ -557,6 +560,11 @@ def build(version, api, errors_only=False):
 
     if unobfuscated(version):
         unobfuscate_build(target / "build.gradle")
+    if version == "26.3":
+        wrapper = target / "gradle/wrapper/gradle-wrapper.properties"
+        wrapper.write_text(re.sub(r"gradle-[\d.]+-bin.zip", "gradle-9.6.0-bin.zip", wrapper.read_text()))
+        properties.write_text(re.sub(r"^loader_version=.*$", "loader_version=0.19.5", properties.read_text(), flags=re.M))
+        manifest.write_text(re.sub(r'"fabricloader": "[^"]*"', '"fabricloader": ">=0.19.5"', manifest.read_text()))
 
     overridden = apply_variants(version, target)
     applied = 0
@@ -571,6 +579,8 @@ def build(version, api, errors_only=False):
         for old, new in rules_for(version):
             patched = patched.replace(old, new)
 
+        if unobfuscated(version) and "client/gui" in path.as_posix():
+            patched = re.sub(r"0x([0-9A-Fa-f]{6})(?![0-9A-Fa-f])", r"0xFF\1", patched)
         if patched != original:
             path.write_text(patched, encoding="utf-8")
             applied += 1
@@ -583,16 +593,18 @@ def build(version, api, errors_only=False):
         cwd=target, capture_output=True, text=True,
         env={**__import__("os").environ, "JAVA_HOME": str(jdk_for(version))})
 
+    (target / "build.log").write_text(result.stdout + result.stderr)
+
     if result.returncode != 0:
         errors = [line for line in (result.stdout + result.stderr).splitlines()
                   if "error:" in line]
         print(f"  {version}: FAILED, {len(errors)} errors")
         report(errors, target, limit=None if errors_only else 12)
-        return None
+        return False
 
     if errors_only:
         print(f"  {version}: compiles clean")
-        return None
+        return True
 
     jars = [jar for jar in (target / "build" / "libs").glob("*.jar")
             if "sources" not in jar.name]
@@ -613,19 +625,23 @@ def main():
     wanted = [item for item in arguments if not item.startswith("--")] or list(TARGETS)
     WORK.mkdir(parents=True, exist_ok=True)
     built = {}
+    failed = False
 
     for version in wanted:
         if version not in ALL:
             print(f"  {version}: not a version we know about")
+            failed = True
             continue
 
         jar = build(version, ALL[version], errors_only)
 
-        if jar:
+        if not jar:
+            failed = True
+        elif not errors_only:
             built[version] = jar.name
 
     if errors_only:
-        return 0
+        return 1 if failed else 0
 
     print("\nbuilt:", json.dumps(built, indent=2))
     return 0 if len(built) == len(wanted) else 1

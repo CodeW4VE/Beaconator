@@ -30,8 +30,8 @@ public class BeaconatorClient implements ClientModInitializer {
 
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(PerimeterRenderer::render);
 		HudRenderCallback.EVENT.register(BeaconatorHud::render);
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> PlanManager.onJoin());
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> PlanManager.onDisconnect());
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> client.execute(PlanManager::onJoin));
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(PlanManager::onDisconnect));
 		// Draw chunks as they arrive instead of waiting for the sweep to reach them.
 		ClientChunkEvents.CHUNK_LOAD.register((world, chunk) ->
 				MapStore.onChunkLoaded(chunk.getPos().x, chunk.getPos().z));

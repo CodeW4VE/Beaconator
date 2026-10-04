@@ -25,6 +25,7 @@ public final class PlanManager {
 	private static boolean editMode;
 	private static NodeKey hovered;
 	private static boolean dirty;
+	private static String sessionWorldId;
 
 	private PlanManager() {
 	}
@@ -122,9 +123,11 @@ public final class PlanManager {
 		autoSave();
 		rememberOpenPlan();
 		xyz.w4ve.beaconator.client.map.MapStore.closeAll();
+		ClientSync.forget();
 		plan = null;
 		hovered = null;
 		editMode = false;
+		sessionWorldId = null;
 	}
 
 	/**
@@ -135,6 +138,7 @@ public final class PlanManager {
 	 * common case: one site, one plan.
 	 */
 	public static void onJoin() {
+		sessionWorldId = resolveWorldId();
 		BeaconatorConfig config = BeaconatorConfig.get();
 
 		if (!config.reopenLastPlan || plan != null) {
@@ -242,6 +246,10 @@ public final class PlanManager {
 	// ------------------------------------------------------------------ storage
 
 	public static String worldId() {
+		return sessionWorldId == null ? resolveWorldId() : sessionWorldId;
+	}
+
+	private static String resolveWorldId() {
 		Minecraft mc = Minecraft.getInstance();
 
 		if (mc.getCurrentServer() != null) {

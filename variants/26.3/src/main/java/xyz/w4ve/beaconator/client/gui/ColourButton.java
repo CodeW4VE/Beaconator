@@ -2,7 +2,7 @@ package xyz.w4ve.beaconator.client.gui;
 
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
@@ -64,12 +64,16 @@ public class ColourButton extends Button {
 	}
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		if (!active || !visible || !isMouseOver(mouseX, mouseY) || button > 1) {
+	public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
+			boolean doubled) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
+		if (!active || !visible || !isMouseOver(mouseX, mouseY) || (button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT)) {
 			return false;
 		}
 
-		step(button == 1 ? -1 : 1);
+		step(button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1);
 		playDownSound(net.minecraft.client.Minecraft.getInstance().getSoundManager());
 		return true;
 	}
@@ -85,11 +89,13 @@ public class ColourButton extends Button {
 	}
 
 	@Override
-	protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+	protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY,
+			float delta) {
 		var font = net.minecraft.client.Minecraft.getInstance().font;
 		// The swatch sits on the right, so the label keeps the width it would have anyway.
 		setMessage(Component.literal(fit(font, label + ": " + colourName(), width - 40)));
-		super.renderWidget(graphics, mouseX, mouseY, delta);
+		extractDefaultSprite(graphics);
+		extractDefaultLabel(graphics.textRenderer());
 
 		int right = getX() + width - 6;
 		graphics.fill(right - 14, getY() + 4, right, getY() + 16, 0xFF000000);

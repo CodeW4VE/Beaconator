@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.2
+
+- Added Minecraft 26.3 support, including native RenderPearl coverage faces, wireframes, beacon beams and water overlays.
+- Fixed missing colour button names and transparent screen labels on 26.x.
+- Split Display into two pages so settings remain readable and accessible at larger GUI scales.
+- Fixed disconnect autosaving into the wrong world folder and cleared shared plan state when leaving a server.
+- Release jars now include the MIT license; all supported builds run the model tests.
+- Saved plan format remains unchanged. Keep existing client configuration and server worlds when updating.
+- On 26.x pressure plates use visible markers instead of full ghost block models.
+
 ## 2.3.1
 
 **Your keys stay where you put them.** Opening the screen used to be a special case inside the edit

@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml/badge.svg)](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minecraft](https://img.shields.io/badge/minecraft-1.21--1.21.11-green.svg)](https://fabricmc.net/)
+[![Minecraft](https://img.shields.io/badge/minecraft-1.21--26.3-green.svg)](https://fabricmc.net/)
 
 Mod de Fabric para planificar y construir **perímetros de beacons**. Funciona solo en el cliente;
 poné el mismo jar en el servidor y todo el equipo comparte un plan.
@@ -41,9 +41,18 @@ Beaconator solo hace perímetros, así que puede hacerlos bien.
 - **Inglés y español**, cambiado desde la pantalla del mod y no desde el idioma del juego.
 - **Todas las teclas se pueden cambiar**, con modificadores: `G`, `Shift + G` y `Ctrl + Shift + G` son tres teclas distintas.
 
+## Actualización a 26.3
+
+La versión 26.3 requiere Java 25 y Fabric Loader 0.19.5 o posterior. Las versiones 1.21 usan Java 21.
+Se conservan los planes, estados de nodos, corrientes y totales de materiales. Conservá
+`config/beaconator/` y el mundo del servidor. En 26.x las placas se muestran como marcas,
+sin modelos completos de bloques fantasma.
+
+Pantalla tiene dos páginas: **Colores / capas** abre la segunda.
+
 ## Requisitos
 
-- Minecraft **1.21** a **1.21.8**, y **1.21.11**, un jar por version
+- Minecraft **1.21** a **1.21.8**, **1.21.11**, **26.1.2** y **26.3**, un jar por versión
 - Fabric Loader 0.16 o superior
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 

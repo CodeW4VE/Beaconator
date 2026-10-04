@@ -13,7 +13,7 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
@@ -21,7 +21,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
@@ -110,10 +110,10 @@ public class BeaconatorScreen extends Screen {
 		}
 	}
 
-	private static final int LABEL_COLOR = 0xFFFFFF;
-	private static final int DIM_COLOR = 0xAAAAAA;
-	private static final int WARN_COLOR = 0xFF6060;
-	private static final int OK_COLOR = 0x57E36B;
+	private static final int LABEL_COLOR = 0xFFFFFFFF;
+	private static final int DIM_COLOR = 0xFFAAAAAA;
+	private static final int WARN_COLOR = 0xFFFF6060;
+	private static final int OK_COLOR = 0xFF57E36B;
 
 	/** The blocks a beacon pyramid can be made of, in the order everyone lists them. */
 	private static final String[] PYRAMID_BLOCKS = {
@@ -355,14 +355,14 @@ public class BeaconatorScreen extends Screen {
 		MAP_VIEW.ensureCentred(PlanManager.plan(), mapWidth(), mapHeight());
 	}
 
-	private void renderMap(GuiGraphics graphics, int mouseX, int mouseY) {
+	private void renderMap(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
 		PerimeterPlan plan = PlanManager.plan();
 		// Tiles are fed from the client tick, so the map keeps filling in with this closed.
 		MAP_VIEW.render(graphics, plan, mapX(), mapY(), mapWidth(), mapHeight(), mouseX, mouseY);
 
 		// The game HUD is right behind this, so the readout gets its own backing.
 		graphics.fill(0, mapY() + mapHeight(), width, mapY() + mapHeight() + 28, 0xC0101318);
-		graphics.drawString(font, MAP_VIEW.describe(plan), mapX() + 4, mapY() + mapHeight() + 4,
+		graphics.text(font, MAP_VIEW.describe(plan), mapX() + 4, mapY() + mapHeight() + 4,
 				DIM_COLOR, false);
 		// Two hints on one line, and on a narrow screen they used to overprint each other into
 		// mush. The mouse one wins the space; the arrow keys one gives way.
@@ -373,13 +373,13 @@ public class BeaconatorScreen extends Screen {
 		int hintY = mapY() + mapHeight() + 16;
 
 		if (font.width(mouseHint) + font.width(moveHint) + 24 <= width) {
-			graphics.drawString(font, moveHint, width - 8 - font.width(moveHint), hintY, DIM_COLOR, false);
+			graphics.text(font, moveHint, width - 8 - font.width(moveHint), hintY, DIM_COLOR, false);
 		} else {
 			moveHint = "";
 		}
 
 		int room = width - 16 - (moveHint.isEmpty() ? 0 : font.width(moveHint) + 12);
-		graphics.drawString(font, fit(mouseHint, room), mapX() + 4, hintY, DIM_COLOR, false);
+		graphics.text(font, fit(mouseHint, room), mapX() + 4, hintY, DIM_COLOR, false);
 
 		NodeKey hovered = MAP_VIEW.hovered();
 
@@ -389,19 +389,19 @@ public class BeaconatorScreen extends Screen {
 			String text = Lang.t("map.node_at", hovered.toString(), node.x(), node.z())
 					+ (plan.moved(hovered) ? String.format("  (%+d, %+d)", offset[0], offset[1]) : "")
 					+ "  [" + Lang.state(plan.statusAt(hovered)) + "]";
-			graphics.drawString(font, text, width - 8 - font.width(text), mapY() + mapHeight() + 4,
+			graphics.text(font, text, width - 8 - font.width(text), mapY() + mapHeight() + 4,
 					LABEL_COLOR, false);
 
 			// Why is this node not green? Without the numbers and the exact spot the plan expects
 			// a beacon at, a node that reads as empty is impossible to tell from a plan that is
 			// looking one block, or one Y level, off what was actually built.
 			String detail = scanDetail(plan, hovered, node);
-			graphics.drawString(font, detail, width - 8 - font.width(detail),
+			graphics.text(font, detail, width - 8 - font.width(detail),
 					mapY() + mapHeight() + 15, DIM_COLOR, false);
 		}
 
 		if (!PlanManager.inPlanDimension()) {
-			graphics.drawCenteredString(font, Lang.t("wrong_dimension", plan.dimension()),
+			graphics.centeredText(font, Lang.t("wrong_dimension", plan.dimension()),
 					width / 2, mapY() + 8, WARN_COLOR);
 		}
 	}
@@ -431,8 +431,12 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		if (super.mouseClicked(mouseX, mouseY, button)) {
+	public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
+			boolean doubled) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
+		if (super.mouseClicked(event, doubled)) {
 			return true;
 		}
 
@@ -447,7 +451,7 @@ public class BeaconatorScreen extends Screen {
 		PerimeterPlan plan = PlanManager.plan();
 
 		// Move mode, or alt as the shortcut for it: grab the node instead of toggling it.
-		if (button == 0 && (MAP_VIEW.moveMode() || hasAltDown())) {
+		if (button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && (MAP_VIEW.moveMode() || event.hasAltDown())) {
 			NodeKey grabbed = MAP_VIEW.nodeAt(plan, mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
 
 			if (grabbed != null) {
@@ -458,23 +462,23 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		// Shift or control starts a rectangle instead of touching a single node.
-		if (button <= 1 && (hasShiftDown() || hasControlDown())) {
-			MapView.SelectionMode mode = hasControlDown()
+		if ((button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) && (event.hasShiftDown() || event.hasControlDown())) {
+			MapView.SelectionMode mode = event.hasControlDown()
 					? MapView.SelectionMode.RESET
-					: button == 0 ? MapView.SelectionMode.REMOVE : MapView.SelectionMode.EXCLUDE;
+					: button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT ? MapView.SelectionMode.REMOVE : MapView.SelectionMode.EXCLUDE;
 			MAP_VIEW.beginSelection(mode, mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
 			return true;
 		}
 
 		NodeKey key = MAP_VIEW.nodeAt(plan, mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
 
-		if (key == null || button > 1) {
+		if (key == null || (button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT)) {
 			dragging = true;
 			return true;
 		}
 
 		PlanHistory.record(plan, key, Lang.t("map.undo_node"));
-		NodeStatus next = button == 0 ? plan.toggleRemoved(key) : plan.toggleExcluded(key);
+		NodeStatus next = button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT ? plan.toggleRemoved(key) : plan.toggleExcluded(key);
 		setStatus("Node " + key + ": " + Lang.state(next),
 				next == NodeStatus.REMOVED ? WARN_COLOR : next == NodeStatus.PENDING ? OK_COLOR : DIM_COLOR);
 		PlanManager.markDirty();
@@ -483,7 +487,11 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+	public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event,
+			double dragX, double dragY) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
 		if (MAP_VIEW.drawingRun()) {
 			int[] block = MAP_VIEW.blockAt(mouseX, mouseY, mapX(), mapY(), mapWidth(), mapHeight());
 			MAP_VIEW.updateRun(block[0], block[1]);
@@ -493,7 +501,7 @@ public class BeaconatorScreen extends Screen {
 		if (MAP_VIEW.movingNode()) {
 			PerimeterPlan plan = PlanManager.plan();
 			int[] offset = MAP_VIEW.updateMove(plan, mouseX, mouseY,
-					mapX(), mapY(), mapWidth(), mapHeight(), hasControlDown());
+					mapX(), mapY(), mapWidth(), mapHeight(), event.hasControlDown());
 
 			if (offset != null) {
 				reportMove(MAP_VIEW.moveKey(), offset);
@@ -512,11 +520,14 @@ public class BeaconatorScreen extends Screen {
 			return true;
 		}
 
-		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+		return super.mouseDragged(event, dragX, dragY);
 	}
 
 	@Override
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+		double mouseX = event.x();
+		double mouseY = event.y();
+		int button = event.button();
 		dragging = false;
 
 		if (MAP_VIEW.drawingRun()) {
@@ -543,7 +554,7 @@ public class BeaconatorScreen extends Screen {
 			return true;
 		}
 
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(event);
 	}
 
 	/** Says where a node ended up, in blocks off the grid, which is what gets built. */
@@ -643,22 +654,22 @@ public class BeaconatorScreen extends Screen {
 	 * dropping somebody into a screen full of digsorts and shulkers and letting them work out that
 	 * none of it is aimed at them.
 	 */
-	private void renderWaterIntro(GuiGraphics graphics) {
+	private void renderWaterIntro(GuiGraphicsExtractor graphics) {
 		int room = introWidth();
 		int left = width / 2 - room / 2;
-		graphics.drawCenteredString(font, Lang.t("water.intro_title"), width / 2, 44, LABEL_COLOR);
+		graphics.centeredText(font, Lang.t("water.intro_title"), width / 2, 44, LABEL_COLOR);
 
 		int y = 66;
 
 		for (var line : font.split(Component.literal(Lang.t("water.intro_what")), room)) {
-			graphics.drawString(font, line, left, y, LABEL_COLOR, false);
+			graphics.text(font, line, left, y, LABEL_COLOR, false);
 			y += 11;
 		}
 
 		y += 10;
 
 		for (var line : font.split(Component.literal(Lang.t("water.intro_who")), room)) {
-			graphics.drawString(font, line, left, y, DIM_COLOR, false);
+			graphics.text(font, line, left, y, DIM_COLOR, false);
 			y += 11;
 		}
 	}
@@ -816,16 +827,16 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	/** The three states of a stretch and what each colour means, under the buttons that set them. */
-	private void renderWaterLook(GuiGraphics graphics) {
+	private void renderWaterLook(GuiGraphicsExtractor graphics) {
 		int left = width / 2 - 154;
 		int y = height - 92;
-		graphics.drawString(font, fit(Lang.t("water.look_hint"), width - 16), left, y, DIM_COLOR, false);
-		graphics.drawString(font, fit(Lang.t("water.look_hint2"), width - 16), left, y + 12,
+		graphics.text(font, fit(Lang.t("water.look_hint"), width - 16), left, y, DIM_COLOR, false);
+		graphics.text(font, fit(Lang.t("water.look_hint2"), width - 16), left, y + 12,
 				DIM_COLOR, false);
 	}
 
 	/** What is set right now, in words, under the buttons that set it. */
-	private void renderWaterSetup(GuiGraphics graphics) {
+	private void renderWaterSetup(GuiGraphicsExtractor graphics) {
 		PerimeterPlan plan = PlanManager.plan();
 		WaterPlan water = plan.water();
 		int left = width / 2 - 154;
@@ -834,9 +845,9 @@ public class BeaconatorScreen extends Screen {
 		String drain = water.spec().sink() == null
 				? Lang.t("water.drain_none")
 				: Lang.t("water.drain_set", water.spec().sink().x(), water.spec().sink().z());
-		graphics.drawString(font, fit(drain, width - 16), left, y,
+		graphics.text(font, fit(drain, width - 16), left, y,
 				water.spec().sink() == null ? WARN_COLOR : LABEL_COLOR, false);
-		graphics.drawString(font, fit(Lang.t("water.layer",
+		graphics.text(font, fit(Lang.t("water.layer",
 				water.spec().y(), water.spec().waterY()), width - 16), left, y + 12, DIM_COLOR, false);
 
 		// Say what that height means rather than only what it is. The default is the one layer that
@@ -846,8 +857,8 @@ public class BeaconatorScreen extends Screen {
 		String note = water.spec().y() == WaterSpec.BOTTOM_LAYER && baseY == WaterSpec.BOTTOM_LAYER
 				? Lang.t("water.layer_bottom")
 				: Lang.t("water.layer_high", baseY);
-		graphics.drawString(font, fit(note, width - 16), left, y + 24, DIM_COLOR, false);
-		graphics.drawString(font, fit(Lang.t("water.setup_hint"), width - 16), left, y + 36,
+		graphics.text(font, fit(note, width - 16), left, y + 24, DIM_COLOR, false);
+		graphics.text(font, fit(Lang.t("water.setup_hint"), width - 16), left, y + 36,
 				DIM_COLOR, false);
 	}
 
@@ -862,14 +873,14 @@ public class BeaconatorScreen extends Screen {
 				}).bounds(width / 2 - 75, 32, 150, 20).build());
 	}
 
-	private void renderWaterCost(GuiGraphics graphics) {
+	private void renderWaterCost(GuiGraphicsExtractor graphics) {
 		PerimeterPlan plan = PlanManager.plan();
 		WaterPlan water = plan.water();
 		int left = width / 2 - 154;
 		int y = 62;
 
 		if (water.isEmpty()) {
-			graphics.drawCenteredString(font, Lang.t("water.empty"), width / 2, y, DIM_COLOR);
+			graphics.centeredText(font, Lang.t("water.empty"), width / 2, y, DIM_COLOR);
 			return;
 		}
 
@@ -880,39 +891,39 @@ public class BeaconatorScreen extends Screen {
 			Block block = WorldScanner.block(entry.getKey());
 
 			if (block != null) {
-				graphics.renderItem(new ItemStack(block.asItem()), left, y - 4);
+				graphics.item(new ItemStack(block.asItem()), left, y - 4);
 			}
 
-			graphics.drawString(font, shortName(entry.getKey()), left + 20, y, LABEL_COLOR, false);
-			graphics.drawString(font, String.format("%,d", entry.getValue()), left + 190, y,
+			graphics.text(font, shortName(entry.getKey()), left + 20, y, LABEL_COLOR, false);
+			graphics.text(font, String.format("%,d", entry.getValue()), left + 190, y,
 					LABEL_COLOR, false);
 			y += 18;
 		}
 
 		y += 6;
-		graphics.drawString(font, Lang.t("water.cost_mine",
+		graphics.text(font, Lang.t("water.cost_mine",
 				String.format("%,d", budget.iceToMine()), shortName(water.spec().iceBlock()),
 				WaterBudget.shulkers(budget.iceToMine())), left, y, LABEL_COLOR, false);
 		y += 14;
-		graphics.drawString(font, Lang.t("water.cost_channel",
+		graphics.text(font, Lang.t("water.cost_channel",
 				String.format("%,d", budget.channelBlocks()),
 				String.format("%,d", budget.blocksToDig())), left, y, DIM_COLOR, false);
 		y += 14;
-		graphics.drawString(font, Lang.t("water.cost_trip",
+		graphics.text(font, Lang.t("water.cost_trip",
 				String.format("%,d", budget.trip().longest()),
 				String.format("%,d", budget.trip().average()),
 				budget.trip().maxTurns()), left, y, DIM_COLOR, false);
 		y += 12;
-		graphics.drawString(font, budget.trip().overhead() == 0
+		graphics.text(font, budget.trip().overhead() == 0
 				? Lang.t("water.ideal_perfect")
 				: Lang.t("water.ideal", budget.trip().overhead()), left, y,
 				budget.trip().overhead() == 0 ? OK_COLOR : DIM_COLOR, false);
 		y += 18;
-		graphics.drawString(font, Lang.t("water.cost_nodes", budget.nodesServed(),
+		graphics.text(font, Lang.t("water.cost_nodes", budget.nodesServed(),
 				budget.nodesOrphaned(), plan.countByStatus(NodeStatus.EXCLUDED)),
 				left, y, DIM_COLOR, false);
 		y += 14;
-		graphics.drawString(font, Lang.t("water.cost_flow", budget.waterSources(),
+		graphics.text(font, Lang.t("water.cost_flow", budget.waterSources(),
 				budget.flowStops(), budget.junctions()), left, y, DIM_COLOR, false);
 
 		// The chunk borders. A number nobody would think to ask for until the first drop goes
@@ -922,7 +933,7 @@ public class BeaconatorScreen extends Screen {
 		if (fittings != null) {
 			int flagged = fittings.warnings().size();
 			y += 12;
-			graphics.drawString(font, flagged == 0
+			graphics.text(font, flagged == 0
 					? Lang.t("water.cost_borders_ok", fittings.crossings())
 					: Lang.t("water.cost_borders", fittings.crossings(), flagged), left, y,
 					flagged == 0 ? OK_COLOR : BeaconatorConfig.get().colorWaterBad, false);
@@ -934,14 +945,14 @@ public class BeaconatorScreen extends Screen {
 
 		if (read > 0) {
 			y += 18;
-			graphics.drawString(font, Lang.t("water.progress",
+			graphics.text(font, Lang.t("water.progress",
 					String.format("%,d", scanned[ChannelState.FLOWING.ordinal()]),
 					String.format("%,d", scanned[ChannelState.FLOORED.ordinal()]),
 					String.format("%,d", scanned[ChannelState.OPEN.ordinal()]),
 					String.format("%,d", scanned[ChannelState.SOLID.ordinal()])),
 					left, y, LABEL_COLOR, false);
 			y += 12;
-			graphics.drawString(font, Lang.t("water.progress_note",
+			graphics.text(font, Lang.t("water.progress_note",
 					String.format("%,d", scanned[ChannelState.UNKNOWN.ordinal()])),
 					left, y, DIM_COLOR, false);
 		}
@@ -950,7 +961,7 @@ public class BeaconatorScreen extends Screen {
 		// now that the borders have a line of their own.
 		if (BeaconatorConfig.get().showFittings) {
 			y += 14;
-			graphics.drawString(font, Lang.t("water.fittings_note"), left, y, DIM_COLOR, false);
+			graphics.text(font, Lang.t("water.fittings_note"), left, y, DIM_COLOR, false);
 		}
 
 		int blocked = budget.blockedRuns();
@@ -958,7 +969,7 @@ public class BeaconatorScreen extends Screen {
 
 		if (blocked > 0 || lost > 0) {
 			y += 18;
-			graphics.drawString(font, blocked > 0 ? Lang.t("water.blocked", blocked)
+			graphics.text(font, blocked > 0 ? Lang.t("water.blocked", blocked)
 					: Lang.t("water.disconnected", lost), left, y, WARN_COLOR, false);
 		}
 	}
@@ -1065,7 +1076,7 @@ public class BeaconatorScreen extends Screen {
 
 		// Right click erases whatever run is under it, whether Draw is on or not: getting rid of a
 		// wrong line is not a mode you should have to be in.
-		if (button == 1) {
+		if (button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
 			int before = channelLength(plan);
 			boolean erased = plan.water().removeAt(block[0], block[1]);
 
@@ -1080,7 +1091,7 @@ public class BeaconatorScreen extends Screen {
 			return true;
 		}
 
-		if (button == 0 && waterDraw) {
+		if (button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && waterDraw) {
 			MAP_VIEW.beginRun(block[0], block[1]);
 			return true;
 		}
@@ -1100,7 +1111,7 @@ public class BeaconatorScreen extends Screen {
 		return total;
 	}
 
-	private void renderWater(GuiGraphics graphics, int mouseX, int mouseY) {
+	private void renderWater(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
 		PerimeterPlan plan = PlanManager.plan();
 		MAP_VIEW.render(graphics, plan, mapX(), mapY(), mapWidth(), mapHeight(), mouseX, mouseY);
 
@@ -1109,7 +1120,7 @@ public class BeaconatorScreen extends Screen {
 		int textY = mapY() + mapHeight() + 4;
 
 		if (water.isEmpty()) {
-			graphics.drawString(font, Lang.t("water.empty"), mapX() + 4, textY, DIM_COLOR, false);
+			graphics.text(font, Lang.t("water.empty"), mapX() + 4, textY, DIM_COLOR, false);
 		} else {
 			WaterNetwork network = WaterCache.network(plan);
 			WaterBudget budget = network.budget();
@@ -1119,7 +1130,7 @@ public class BeaconatorScreen extends Screen {
 					shortName(water.spec().iceBlock()),
 					WaterBudget.shulkers(budget.iceToMine()),
 					String.format("%,d", budget.trip().longest()));
-			graphics.drawString(font, fit(line, width - 16), mapX() + 4, textY, LABEL_COLOR, false);
+			graphics.text(font, fit(line, width - 16), mapX() + 4, textY, LABEL_COLOR, false);
 
 			// Second line: what is wrong if anything is, otherwise how the digging is going.
 			int blocked = budget.blockedRuns();
@@ -1136,23 +1147,23 @@ public class BeaconatorScreen extends Screen {
 							String.format("%,d", scanned[ChannelState.FLOORED.ordinal()]),
 							String.format("%,d", scanned[ChannelState.OPEN.ordinal()]),
 							String.format("%,d", scanned[ChannelState.SOLID.ordinal()]));
-			graphics.drawString(font, fit(second, width - 16), mapX() + 4, textY + 11,
+			graphics.text(font, fit(second, width - 16), mapX() + 4, textY + 11,
 					blocked > 0 || lost > 0 || budget.nodesOrphaned() > 0 ? WARN_COLOR : OK_COLOR,
 					false);
 		}
 
 		// The hint goes on the right of the first line, where the beacons map puts its own.
 		String hint = waterDraw ? Lang.t("water.hint_draw") : Lang.t("water.hint_look");
-		graphics.drawString(font, hint, width - 8 - font.width(hint), mapY() + mapHeight() + 17,
+		graphics.text(font, hint, width - 8 - font.width(hint), mapY() + mapHeight() + 17,
 				DIM_COLOR, false);
 
 		String where = water.spec().sink() == null
 				? Lang.t("water.drain_none")
 				: Lang.t("water.drain_set", water.spec().sink().x(), water.spec().sink().z());
-		graphics.drawString(font, where, width - 8 - font.width(where), mapY() + 6, DIM_COLOR, false);
+		graphics.text(font, where, width - 8 - font.width(where), mapY() + 6, DIM_COLOR, false);
 
 		if (!PlanManager.inPlanDimension()) {
-			graphics.drawCenteredString(font, Lang.t("wrong_dimension", plan.dimension()),
+			graphics.centeredText(font, Lang.t("wrong_dimension", plan.dimension()),
 					width / 2, mapY() + 8, WARN_COLOR);
 		}
 	}
@@ -1475,7 +1486,7 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		ItemStack stack = mc.player.getMainHandItem();
-		ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+		Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
 		Block block = WorldScanner.block(id.toString());
 
 		if (block == null || stack.isEmpty()) {
@@ -1525,7 +1536,7 @@ public class BeaconatorScreen extends Screen {
 				}));
 	}
 
-	private void renderMaterials(GuiGraphics graphics) {
+	private void renderMaterials(GuiGraphicsExtractor graphics) {
 		PerimeterPlan plan = PlanManager.plan();
 
 		if (plan == null) {
@@ -1536,9 +1547,9 @@ public class BeaconatorScreen extends Screen {
 		int left = width / 2 - 154;
 		int y = 70;
 
-		graphics.drawString(font, Lang.t("materials.block"), left + 20, y, DIM_COLOR, false);
-		graphics.drawString(font, Lang.t("materials.needed"), left + 170, y, DIM_COLOR, false);
-		graphics.drawString(font, Lang.t("materials.missing"), left + 240, y, DIM_COLOR, false);
+		graphics.text(font, Lang.t("materials.block"), left + 20, y, DIM_COLOR, false);
+		graphics.text(font, Lang.t("materials.needed"), left + 170, y, DIM_COLOR, false);
+		graphics.text(font, Lang.t("materials.missing"), left + 240, y, DIM_COLOR, false);
 		y += 14;
 
 		for (Map.Entry<String, Integer> entry : plan.tally().counts().entrySet()) {
@@ -1546,28 +1557,28 @@ public class BeaconatorScreen extends Screen {
 			int missing = totals[0].get(entry.getKey()) + totals[1].get(entry.getKey());
 
 			if (block != null) {
-				graphics.renderItem(new ItemStack(block.asItem()), left, y - 4);
+				graphics.item(new ItemStack(block.asItem()), left, y - 4);
 			}
 
-			graphics.drawString(font, shortName(entry.getKey()), left + 20, y, LABEL_COLOR, false);
-			graphics.drawString(font, String.format("%,d", entry.getValue()), left + 170, y, LABEL_COLOR, false);
-			graphics.drawString(font, String.format("%,d", missing), left + 240, y,
+			graphics.text(font, shortName(entry.getKey()), left + 20, y, LABEL_COLOR, false);
+			graphics.text(font, String.format("%,d", entry.getValue()), left + 170, y, LABEL_COLOR, false);
+			graphics.text(font, String.format("%,d", missing), left + 240, y,
 					missing == 0 ? OK_COLOR : LABEL_COLOR, false);
 			y += 18;
 		}
 
 		y += 8;
-		graphics.drawString(font, Lang.t("materials.total", String.format("%,d", plan.tally().total()),
+		graphics.text(font, Lang.t("materials.total", String.format("%,d", plan.tally().total()),
 				String.format("%,d", totals[0].total() + totals[1].total())), left, y, LABEL_COLOR, false);
 
 		if (!totals[1].isEmpty()) {
 			y += 12;
-			graphics.drawString(font, Lang.t("materials.unknown", String.format("%,d", totals[1].total())),
+			graphics.text(font, Lang.t("materials.unknown", String.format("%,d", totals[1].total())),
 					left, y, DIM_COLOR, false);
 		}
 
 		y += 20;
-		graphics.drawString(font, Lang.t("materials.states",
+		graphics.text(font, Lang.t("materials.states",
 				plan.countByStatus(NodeStatus.PLACED), plan.countByStatus(NodeStatus.PENDING),
 				plan.countByStatus(NodeStatus.EXCLUDED), plan.countByStatus(NodeStatus.REMOVED)),
 				left, y, DIM_COLOR, false);
@@ -1577,7 +1588,7 @@ public class BeaconatorScreen extends Screen {
 		if (!plan.water().isEmpty()) {
 			WaterBudget budget = WaterCache.network(plan).budget();
 			y += 20;
-			graphics.drawString(font, fit(Lang.t("water.see_cost",
+			graphics.text(font, fit(Lang.t("water.see_cost",
 					String.format("%,d", budget.channelBlocks()),
 					WaterBudget.shulkers(budget.iceToMine())), width - 16),
 					left, y, DIM_COLOR, false);
@@ -1631,11 +1642,13 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+		int keyCode = event.key();
+		int scanCode = event.keycode();
 		// Ctrl+Z anywhere in the screen, as long as a text field does not want the key. On the
 		// water tab it takes back the last run instead: undoing a node you marked ten minutes ago
 		// is not what anybody means by undo while they are drawing channels.
-		if (keyCode == InputConstants.KEY_Z && hasControlDown() && listeningFor == null
+		if (keyCode == InputConstants.KEY_Z && event.hasControlDown() && listeningFor == null
 				&& getFocused() instanceof EditBox == false) {
 			if (activeTab == Tab.WATER_MAP && PlanManager.hasPlan()) {
 				undoRun();
@@ -1651,7 +1664,7 @@ public class BeaconatorScreen extends Screen {
 		// Plan tab to type coordinates for that is no way to live.
 		if (activeTab == Tab.MAP && listeningFor == null && PlanManager.hasPlan()
 				&& !(getFocused() instanceof EditBox)) {
-			int step = hasControlDown() ? 16 : hasShiftDown() ? 5 : 1;
+			int step = event.hasControlDown() ? 16 : event.hasShiftDown() ? 5 : 1;
 			int dx = keyCode == InputConstants.KEY_LEFT ? -step
 					: keyCode == InputConstants.KEY_RIGHT ? step : 0;
 			int dz = keyCode == InputConstants.KEY_UP ? -step
@@ -1703,14 +1716,14 @@ public class BeaconatorScreen extends Screen {
 
 			InputConstants.Key key = keyCode == InputConstants.KEY_ESCAPE
 					? InputConstants.UNKNOWN
-					: InputConstants.getKey(keyCode, scanCode);
+					: InputConstants.getKey(event);
 			bind(listeningFor, key, keyCode == InputConstants.KEY_ESCAPE ? 0 : Keys.heldModifiers());
 			listeningFor = null;
 			rebuildWidgets();
 			return true;
 		}
 
-		return super.keyPressed(keyCode, scanCode, modifiers);
+		return super.keyPressed(event);
 	}
 
 	/** GLFW 340..347: the left and right shift, control, alt and super keys. */
@@ -1973,7 +1986,7 @@ public class BeaconatorScreen extends Screen {
 
 		PlanManager.autoSave();
 		String name = nameBox == null || nameBox.getValue().isBlank() ? "perimeter" : nameBox.getValue().trim();
-		PerimeterPlan plan = new PerimeterPlan(name, mc.level.dimension().location().toString(),
+		PerimeterPlan plan = new PerimeterPlan(name, mc.level.dimension().identifier().toString(),
 				mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ());
 		PlanManager.setPlan(plan);
 		PlanManager.setEditMode(true);
@@ -2047,7 +2060,7 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	private void openPlan() {
-		minecraft.setScreen(new PickerScreen(this, Lang.t("plan.pick_open"), Lang.t("plan.open"),
+		minecraft.setScreenAndShow(new PickerScreen(this, Lang.t("plan.pick_open"), Lang.t("plan.open"),
 				PlanManager.savedPlans(), name -> {
 					PlanManager.autoSave();
 
@@ -2061,7 +2074,7 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	private void deletePlan() {
-		minecraft.setScreen(new PickerScreen(this, Lang.t("plan.pick_delete"), Lang.t("plan.delete"),
+		minecraft.setScreenAndShow(new PickerScreen(this, Lang.t("plan.pick_delete"), Lang.t("plan.delete"),
 				PlanManager.savedPlans(), name -> {
 					try {
 						PlanStore.delete(PlanManager.worldId(), name);
@@ -2078,7 +2091,7 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	private void importSchematic() {
-		minecraft.setScreen(new PickerScreen(this, Lang.t("plan.pick_import"), Lang.t("plan.import"),
+		minecraft.setScreenAndShow(new PickerScreen(this, Lang.t("plan.pick_import"), Lang.t("plan.import"),
 				SchematicFiles.list(), file -> {
 					Minecraft mc = Minecraft.getInstance();
 
@@ -2093,7 +2106,7 @@ public class BeaconatorScreen extends Screen {
 								: new int[] {mc.player.getBlockX(), mc.player.getBlockY(), mc.player.getBlockZ()};
 						boolean placedByHand = !LitematicIO.hasOrigin(path);
 						PerimeterPlan plan = LitematicIO.read(path, SchematicFiles.stripExtension(file),
-								mc.level.dimension().location().toString(), fallback);
+								mc.level.dimension().identifier().toString(), fallback);
 						PlanManager.autoSave();
 						PlanManager.setPlan(plan);
 						ScanCache.clear();
@@ -2123,7 +2136,7 @@ public class BeaconatorScreen extends Screen {
 
 		PerimeterPlan plan = PlanManager.plan();
 		Minecraft mc = Minecraft.getInstance();
-		String author = mc.player == null ? "" : mc.player.getGameProfile().getName();
+		String author = mc.player == null ? "" : mc.player.getGameProfile().name();
 		String name = plan.name();
 		setStatus(Lang.t("plan.exporting", name), DIM_COLOR);
 
@@ -2263,17 +2276,18 @@ public class BeaconatorScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		super.render(graphics, mouseX, mouseY, partialTick);
+	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY,
+			float partialTick) {
+		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 
 		for (Label label : labels) {
 			String text = label.text().get();
 
 			if (label.centered()) {
-				graphics.drawCenteredString(font, text, label.x(), label.y(), label.color().get());
+				graphics.centeredText(font, text, label.x(), label.y(), label.color().get());
 			} else {
 				int x = label.rightAligned() ? label.x() - font.width(text) : label.x();
-				graphics.drawString(font, text, x, label.y(), label.color().get(), false);
+				graphics.text(font, text, x, label.y(), label.color().get(), false);
 			}
 		}
 
@@ -2298,7 +2312,7 @@ public class BeaconatorScreen extends Screen {
 		}
 
 		if (!status.isEmpty()) {
-			graphics.drawCenteredString(font, status, width / 2, height - 44, statusColor);
+			graphics.centeredText(font, status, width / 2, height - 44, statusColor);
 		}
 	}
 
@@ -2318,11 +2332,11 @@ public class BeaconatorScreen extends Screen {
 			ClientSync.resend();
 			waterTouched = false;
 		}
-		minecraft.setScreen(parent);
+		minecraft.setScreenAndShow(parent);
 	}
 
 	/** Opened from a key binding, Mod Menu or {@code /bea gui}. */
 	public static void open() {
-		Minecraft.getInstance().setScreen(new BeaconatorScreen(null));
+		Minecraft.getInstance().setScreenAndShow(new BeaconatorScreen(null));
 	}
 }

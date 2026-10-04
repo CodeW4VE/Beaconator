@@ -33,6 +33,8 @@ public final class Lang {
 	}
 
 	static {
+		put("display.more", "Colours / layers", "Colores / capas");
+		put("display.back", "Display settings", "Ajustes visuales");
 		// tabs
 		put("tab.map", "Map", "Mapa");
 		put("tab.plan", "Plan", "Plan");

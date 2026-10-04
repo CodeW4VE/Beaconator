@@ -46,8 +46,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          # Eleven builds share one dependency cache; without it every release re-downloads
-          # eleven Minecraft jars and eleven Fabric APIs.
+          # Twelve builds share one dependency cache; without it every release re-downloads
+          # twelve Minecraft jars and twelve Fabric APIs.
           cache: 'gradle'
 
       # One jar per Minecraft version, each compiled against that version's real mappings, into

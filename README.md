@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml/badge.svg)](https://github.com/CodeW4VE/Beaconator/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minecraft](https://img.shields.io/badge/minecraft-1.21--1.21.11-green.svg)](https://fabricmc.net/)
+[![Minecraft](https://img.shields.io/badge/minecraft-1.21--26.3-green.svg)](https://fabricmc.net/)
 
 A Fabric mod for planning and building **beacon perimeters**. Client side on its own; put the
 same jar on the server and the whole team shares one plan.
@@ -51,11 +51,17 @@ Beaconator only does perimeters, so it can do them properly.
 
 ## Requirements
 
-- Minecraft **1.21** through **1.21.8**, and **1.21.11**, one jar per version
-- Fabric Loader 0.16 or newer
+- Minecraft **1.21** through **1.21.8**, **1.21.11**, **26.1.2** and **26.3**, one jar per version
+- Fabric Loader 0.16 or newer for 1.21; **0.19.5 or newer for 26.3**
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 
-Drop the jar in `mods/` and start the game. That is the whole install.
+Drop the jar in `mods/` and start the game. Use Java 21 for 1.21 and Java 25 for 26.x.
+
+Updating preserves your saved plans, node states, water lines and material totals. Keep your
+`config/beaconator/` folder and server world. On 26.x, pressure plates are shown as markers
+rather than full ghost block models.
+
+Display settings have two pages: use **Colours / layers** for the second page.
 
 Optional, and only if you want the whole team on one plan: put **the same jar** on the Fabric
 server as well. Without it the mod still works, you just keep your plan to yourself.
