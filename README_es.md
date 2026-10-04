@@ -45,7 +45,7 @@ Beaconator solo hace perímetros, así que puede hacerlos bien.
 
 La versión 26.3 requiere Java 25 y Fabric Loader 0.19.5 o posterior. Las versiones 1.21 usan Java 21.
 Se conservan los planes, estados de nodos, corrientes y totales de materiales. Conservá
-`config/beaconator/` y el mundo del servidor. En 26.x las placas se muestran como marcas,
+`config/beaconator/`, `config/beaconator.json` y el mundo del servidor. En 26.x las placas se muestran como marcas,
 sin modelos completos de bloques fantasma.
 
 Pantalla tiene dos páginas: **Colores / capas** abre la segunda.

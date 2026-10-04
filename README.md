@@ -58,7 +58,7 @@ Beaconator only does perimeters, so it can do them properly.
 Drop the jar in `mods/` and start the game. Use Java 21 for 1.21 and Java 25 for 26.x.
 
 Updating preserves your saved plans, node states, water lines and material totals. Keep your
-`config/beaconator/` folder and server world. On 26.x, pressure plates are shown as markers
+`config/beaconator/` folder and `config/beaconator.json` settings and server world. On 26.x, pressure plates are shown as markers
 rather than full ghost block models.
 
 Display settings have two pages: use **Colours / layers** for the second page.
