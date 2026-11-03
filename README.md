@@ -4,245 +4,145 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Minecraft](https://img.shields.io/badge/minecraft-1.21--26.3-green.svg)](https://fabricmc.net/)
 
-A Fabric mod for planning and building **beacon perimeters**. Client side on its own; put the
-same jar on the server and the whole team shares one plan.
-
-Drop one beacon in the middle, scroll to grow the grid, and Beaconator works out where every
-other beacon goes, draws exactly how much ground each one covers, and keeps track of which ones
-you have already built.
+Plan and build beacon perimeters: place one beacon, grow the grid, and see exactly where every
+other beacon goes and how much ground each one covers.
 
 ![A perimeter from the air, with a beam over every beacon](docs/img/01-beams.jpg)
 
 [Español](README_es.md)
 
-## Why
+- A map of the area with the whole grid on top. Click nodes to keep, drop or exclude them.
+- The real coverage volume of every beacon, so you see the holes before you build.
+- A beam over every beacon position: red for missing, yellow for started, green for done.
+  Nodes turn green on their own as you build.
+- A material list of what the plan needs and what is still missing.
+- Optional on the server: put the same jar there and the whole team shares one live plan.
 
-Schematic mods do the job, but for this one task they get in the way:
+## Installation
 
-- Every schematic block is highlighted, air and dirt included, which is noise you have to look past.
-- Nothing shows the area a beacon actually covers, so you find the holes in your perimeter by walking into them.
-- Telling apart what is built from what is not means comparing against the schematic by eye.
+- Minecraft 1.21 to 1.21.8, 1.21.11, 26.1.2 and 26.3. One jar per version.
+- Fabric Loader 0.16+ (0.19.5+ for 26.3) and [Fabric API](https://modrinth.com/mod/fabric-api).
+- Java 21 for 1.21.x, Java 25 for 26.x.
 
-Beaconator only does perimeters, so it can do them properly.
+Put the jar in `mods/`. It works on the client alone. Put the same jar on a Fabric server if you
+want a shared plan; vanilla clients on that server are never sent anything.
 
-## What it does
+Updating keeps your plans, node states, water lines and totals (they live in
+`config/beaconator/` and `config/beaconator.json`).
 
-- **A map you can plan on.** The mod draws its own map, one pixel per block, from the chunks you load as you play, and puts the whole grid on top of it. You decide which nodes are in, which are out and which get dropped by clicking on them. That is how a perimeter actually gets planned: looking down at the shape, not squinting at boxes from the ground a hundred blocks away. Tiles are cached on disk, so what you have flown over stays drawn.
-- **Grid from one point.** Place the centre, scroll to step through concentric rings: 1 node, 9, 25, 49. Sides can be grown on their own when the perimeter is not square.
-- **Real coverage volumes.** Each node is drawn as the volume vanilla actually applies effects in. That is `2r + 1` blocks wide, `r` blocks down, and unbounded upwards, not a cube.
-- **1 to 5 beacons per node** on one shared pyramid, so you can run every primary effect at once. The layer sizes and block counts are worked out for you.
-- **Node states.** Left click drops a node from the plan, right click marks it as outside the perimeter, which puts a black stained glass on top so it reads as "not one of ours" from far away.
-- **Live scan.** Nodes turn green on their own as you build them, and half built pyramids shade towards green as their blocks go in.
-- **Material list** of what the plan needs and what is still missing.
-- **Assisted placement** that picks the right block out of your hotbar and refuses to let you put plan blocks where the plan wants none.
-- **Layer filter** to work one course at a time.
-- **Litematica import and export**, so you can pick up a perimeter you already built and hand the schematic to people who do not run this mod. If Litematica is installed, easy place follows its toggle instead of fighting it.
-- **Water lines to the digsort.** A perimeter is only half the build: the other half is the
-  channels that carry what you throw in at a beacon to the sorter in the middle. The **Water** tab
-  works the whole network out from the plan, on the one layer left free between the pyramid bases,
-  and costs it down to the shulkers of ice you actually have to mine. You can draw and erase runs
-  yourself, and what is on the map is what gets built.
-- **A plan shared by the server.** Drop the jar on a Fabric server and one plan belongs to
-  everyone: it arrives when you join, and every node anyone places, excludes or drops shows up
-  live for the rest. Publishing it is an operator's call, marking nodes is anybody's. Without the
-  mod on the server nothing changes, and a vanilla client is never sent anything.
-- **English and Spanish**, switched from the screen rather than from the game language.
-- **Every key rebindable** from the mod's own Keys tab, and the screen opens from Mod Menu too.
+## Usage
 
-## Requirements
-
-- Minecraft **1.21** through **1.21.8**, **1.21.11**, **26.1.2** and **26.3**, one jar per version
-- Fabric Loader 0.16 or newer for 1.21; **0.19.5 or newer for 26.3**
-- [Fabric API](https://modrinth.com/mod/fabric-api)
-
-Drop the jar in `mods/` and start the game. Use Java 21 for 1.21 and Java 25 for 26.x.
-
-Updating preserves your saved plans, node states, water lines and material totals. Keep your
-`config/beaconator/` folder and `config/beaconator.json` settings and server world. On 26.x, pressure plates are shown as markers
-rather than full ghost block models.
-
-Display settings have two pages: use **Colours / layers** for the second page.
-
-Optional, and only if you want the whole team on one plan: put **the same jar** on the Fabric
-server as well. Without it the mod still works, you just keep your plan to yourself.
-
-## Getting started
-
-Beaconator is for one job: covering a large area in beacons, evenly, without holes, and knowing
-what you have left to build. If you are spawn proofing a perimeter, this is the mod.
-
-**1. Open the screen.** Press **Shift + B**. That is the whole interface: tabs across the top,
-Done at the bottom. `B` on its own turns edit mode on and off.
-
-**2. Make a plan.** Stand roughly in the middle of the area and, on the **Plan** tab, press
-**New plan here**. If the perimeter is already half built, press **Detect from world** instead
-and the mod reads the beacons that are already there, with their real coordinates.
-
-**3. Shape it on the map.** The **Map** tab is the mod's own map, drawn one pixel per block from
-the chunks you have loaded, with your grid on top of it.
+1. Press `Shift + B` to open the screen. `B` turns edit mode on and off.
+2. On the **Plan** tab, press **New plan here**, standing near the middle of the area. If the
+   perimeter is already half built, press **Detect from world** to read the beacons that are
+   there.
+3. On the **Map** tab, shape the plan: left click drops a node, right click marks it excluded
+   (built, but outside the perimeter).
+4. On the **Grid** tab, pick beacons per node, pyramid level, spacing and size. With
+   **Spacing follows level** on, coverage lines up with no gaps and no overlap.
+5. Go build. `G` hides the beams when they get in the way.
 
 ![The map tab with the whole grid on it](docs/img/02-map.jpg)
 
-Getting around it:
+**Team play:** if the server has the mod, a **Server** tab appears. Press **Share mine** and
+everyone else opens it by name. Publishing a plan needs operator; marking nodes does not.
+
+Commands: `/bea` (open the screen) and `/bea share` (put the open plan on the server).
+
+<!-- modrinth:end -->
+
+## Details
+
+### Map controls
 
 | Input | What it does |
 |-------|--------------|
 | Drag | Move the map |
-| Scroll | Zoom in and out |
-| **Fit** button | Zoom out until the whole plan is on screen |
-| **Centre on me** button | Jump to where you are standing |
-| Left click a node | Drop it from the plan (it is not built at all) |
-| Right click a node | Mark it excluded (built, but not part of the perimeter) |
-| Shift + drag, left | Drop everything in the rectangle |
-| Shift + drag, right | Exclude everything in the rectangle |
+| Scroll | Zoom |
+| **Fit** / **Centre on me** | Show the whole plan / jump to where you are |
+| Left click a node | Drop it from the plan |
+| Right click a node | Mark it excluded |
+| Shift + drag (left / right) | Drop / exclude everything in the rectangle |
 | Ctrl + drag | Put the rectangle back to pending |
-| Ctrl + Z, or **Undo** | Undo the last change, one node or a whole rectangle |
-| Arrow keys | Nudge the whole grid a block (shift 5, ctrl 16) |
+| Ctrl + Z or **Undo** | Undo the last change |
+| Arrow keys | Nudge the grid one block (Shift 5, Ctrl 16) |
 | Page up / down | Move the grid in Y |
-| Alt + drag a node, or **Move** button | Move that one node off the grid |
+| Alt + drag, or **Move** | Move a single node off the grid |
 
-Nothing is lost by closing the screen: the plan saves itself, and reopens on its own next time
-you join that server.
+The map is drawn one pixel per block from chunks you have loaded, and tiles are cached on disk.
+The plan saves itself and reopens when you join that server again.
 
 ### Moving a single node
 
-Sometimes a node lands where a beacon cannot go: in a ravine, on something worth keeping, or a
-few blocks outside the shape you are digging. Nudging the whole grid to fix that one node moves
-the other two hundred, so instead you move just that one, with **Move** on or by holding alt, and
-every other node stays exactly where it was.
+Use it when one node lands in a ravine or on something worth keeping. Only that node moves. It
+snaps back to its row or column within four blocks (hold Ctrl to place it freely). With **Move**
+on, the arrow keys nudge the last node you clicked. A moved node gets a line back to its cell on
+the map, and a node moved off its row is left out of the water network.
 
-A dragged node snaps back onto its own row or column when it lands within four blocks of it. That
-is usually what you want: a node still lined up with its row keeps that row's water channel
-straight. Hold control while dragging to place it anywhere. With **Move** on, the arrow keys nudge
-the node you last clicked instead of the grid, for the last block or two.
+### Keys
 
-The map draws a line from a moved node back to the cell it belongs to, so a nudged perimeter still
-reads as deliberate rather than as a grid that was measured badly. A node moved off its row is
-left out of the water network: it keeps its beacons and its pyramid, but nothing routes a channel
-to it.
-
-**4. Set it up.** On the **Grid** tab: how many beacons per node, the pyramid level, the spacing,
-and how far the grid reaches. Leave **Spacing follows level** on and the coverage lines up
-exactly, with no overlap and no holes. The line under the buttons tells you if it does.
-
-**5. Build it.** Now go dig. In the world you get:
-
-- A **beam on every beacon position** that runs to the sky like a real beacon. **Red** means it
-  is not built, **yellow** means it is started but not finished (including a pyramid that is up
-  but missing a beacon), **green** means done, grey means excluded. Press **G** to turn the beams
-  off when they are in the way.
-
-  ![Red beams over what is left to build, green over what is done](docs/img/04-beams-close.jpg)
-
-- The **coverage** each beacon actually gives, so holes are visible instead of theoretical.
-- A **material list** of what is left, in the HUD and on the Materials tab.
-- Nodes turn green **on their own** as you build them. You do not tell the mod anything.
-
-**6. Working as a team.** If the server has the mod, a **Server** tab appears. Press
-**Share mine** to put your plan up there; everyone else presses its name to open it. From then on
-every node anyone finishes shows up for the rest, live. The HUD says `[shared]` when what you
-mark is going out to everyone.
-
-### Water lines
-
-Only worth reading if you are building a digsort. What we do is run water streams from the beacons
-to a sorter in the middle, so a shulker thrown in at any beacon ends up in the sorter on its own.
-If that is not your build, skip this: nothing else in the mod needs it. The tab says as much the
-first time you open it.
-
-1. Aim at the block the water leaves the sorter by, open the screen, go to **Water**, press
-   **Drain: look at it**. There is no sensible default here: the middle of a grid is usually
-   inside the centre node's own pyramid.
-2. Press **Generate**. You get one spine per row of nodes and one trunk to the drain, every run a
-   block clear of every pyramid base. The shape is a fishbone because what is being optimised is
-   how fast items get in, not what the network costs: every item travels its exact Manhattan
-   distance around a single corner, and nothing without diagonals beats that.
-3. Fix what you do not like. **Draw** on, drag to lay a run (one block wide, snapped to the axis),
-   right click to erase one. What you draw replaces the calculation rather than sitting on top of
-   it, which is why **Generate throws away what you drew** and asks first.
-4. Read the bill on the **Materials** tab: channel, ice, buckets, pressure plates. The ice is what
-   has to be **mined**, nine blocks per packed ice and eighty one per blue, so it is an order of
-   magnitude bigger than the length of the network. Better to know now.
-
-A run dug through a pyramid base is drawn in red and a node the channel never reaches gets a
-cross. Neither is refused: it says what it would break and the call is yours.
-
-**Chunk borders are the exception.** Flowing water pushes an item every tick; bare ice only keeps
-the speed it already had, and a chunk that unloads and comes back does not give it back. Out at
-the far end of a perimeter, unloaded is the normal state. So a source always sits on the last
-block before a border, the spacing starts counting again there, and a pressure plate is never put
-on either side of one. A corner that lands on a border cannot be moved without moving the run, so
-it gets a red post in the world and a cross on the map instead. The Cost tab counts the borders
-and turns green when every one of them is under moving water.
-
-Turn **Sources and plates** on in **Water > Look** and the mod shows both: a source every so many
-blocks, all pushing towards the drain, and a plate one block upstream of each one, where that
-current meets the one behind it. Everything is worked out walking the channel from its dead ends
-down to the drain, so no current ever points away from it, and water you have already poured
-counts: if the block is already flowing the right way, there is nothing left to propose there. From a distance they are posts you can see against the sky. Walk up and a
-plate becomes an actual pressure plate, model and texture and all, sitting in the square it goes
-in, so you can put yours where it is. A source stays a translucent box at the height water sits
-at: fluids are not drawn by the block renderer, so there is no block to ask the game for. On the
-26.x jar both stay marks, because that version has no single block call to use.
-
-The water sources and the pressure plates are counted and shown, not placed, and the network does
-not export to a litematic yet. Those are the parts only a real world can check.
-
-## Keys
-
-Every binding is rebindable, from the game's controls screen or from the mod's **Keys** tab.
-Bindings can take modifiers, so `G`, `Shift + G` and `Ctrl + Shift + G` are three different
-things.
+All bindings can be changed in the controls screen or the mod's **Keys** tab, with modifiers
+(`G`, `Shift + G` and `Ctrl + Shift + G` are three different bindings).
 
 | Binding | Default |
 |---------|---------|
 | Edit mode | `B` |
 | Open the screen | `Shift + B` |
 | Beams on and off | `G` |
-| Set the centre where you stand | unbound |
-| Render on and off | unbound |
-| Easy place on and off | unbound |
-| Layer up · Layer down | unbound |
-| Scan the world | unbound |
-| Undo | unbound |
+| Set the centre where you stand, render on/off, easy place on/off, layer up/down, scan, undo | unbound |
 
-With edit mode on, in the world:
+With edit mode on, in the world: scroll grows or shrinks the grid, Shift + scroll changes
+beacons per node (1 to 6), Ctrl + scroll nudges the spacing, and left/right click drop or
+exclude a node.
 
-| Input | What it does |
-|-------|--------------|
-| Scroll | Grow or shrink the grid |
-| Shift + scroll | Beacons per node, 1 to 6 |
-| Ctrl + scroll | Nudge the spacing |
-| Left click a node | Drop it from the plan, or put it back |
-| Right click a node | Mark it excluded, or put it back |
+### Other features
 
-## Commands
+- 1 to 6 beacons per node on one shared pyramid, so every primary effect can run at once. Layer
+  sizes and block counts are worked out for you.
+- Excluded nodes get a black stained glass on top so they read as "not ours" from far away.
+- Assisted placement picks the right block from your hotbar and blocks plan blocks where the
+  plan wants none. A layer filter lets you work one course at a time.
+- Litematica import and export. With Litematica installed, easy place follows its toggle.
+- English and Spanish, switched from the screen. The screen also opens from Mod Menu.
+- Display settings have two pages; the second is **Colours / layers**.
+- On 26.x, pressure plates are shown as markers instead of full block models.
 
-Three, because everything else is a button that also shows you its current value, which a command
-cannot do.
+### Water lines (for digsorts)
 
-| Command | What it does |
-|---------|--------------|
-| `/bea` or `/bea gui` | Open the screen |
-| `/bea share` | Put the open plan on the server |
+Only useful if you run water from the beacons to a sorter in the middle.
 
-## The geometry
+1. Aim at the block where water leaves the sorter, open **Water** and press **Drain: look at it**.
+2. Press **Generate**: one channel per row of nodes plus one trunk to the drain, a block clear of
+   every pyramid base. Items always travel their shortest path with a single turn.
+3. Fix it by hand: **Draw** on, drag to lay a run, right click to erase. What you draw replaces
+   the generated part, so **Generate** asks before throwing it away.
+4. Check the **Materials** tab: channel, ice, buckets, pressure plates. Ice is counted as what
+   you have to mine (9 per packed ice, 81 per blue ice).
 
-A beacon with `level` pyramid layers reaches `10 * level + 10` blocks, so a full level 4 pyramid
-covers a square `101` blocks a side. Set the spacing to that and coverage lines up exactly with
-no overlap and no holes. Anything wider leaves strips of ground with no effect, which Beaconator
-paints red so you notice before you are standing in one.
+Runs through a pyramid base are drawn red and unreachable nodes get a cross; neither is blocked.
 
-Beacons on one shared pyramid make layer `k` into `(2k + a)` by `(2k + b)`, where `a x b` is the
-rectangle the beacons sit in. The shape matters: four beacons in a row need 236 blocks a node,
-four in a square need 216, and across a few hundred nodes that is thousands of blocks. Beaconator
-costs every rectangle that fits your beacons and uses the cheapest.
+Chunk borders: items on bare ice lose their speed when a chunk unloads, so the mod puts a water
+source on the last block before every border and never a pressure plate next to one. A corner on
+a border gets a red post in the world and a cross on the map. The Cost tab turns green when every
+border is under moving water.
 
-A curiosity that falls out of it: five and six beacons cost the same pyramid, since both live in
-a 2x3. There are only five primary effects, so the sixth is a spare that comes free.
+With **Sources and plates** on in **Water > Look**, the mod shows where each source and plate
+goes. Water already flowing the right way counts as done. Sources and plates are shown and
+counted, not placed, and the water network does not export to Litematica yet.
 
-The maths lives in `xyz.w4ve.beaconator.model`, has no Minecraft in it, and is covered by unit
-tests against a real 208 node perimeter.
+### The geometry
+
+A beacon with `level` layers reaches `10 * level + 10` blocks, so a full level 4 pyramid covers
+a 101 block square. That spacing gives exact coverage; anything wider leaves strips with no
+effect, which the mod paints red.
+
+Beacons sharing a pyramid turn layer `k` into `(2k + a)` by `(2k + b)`, where `a x b` is the
+rectangle the beacons sit in. Four in a row cost 236 blocks per node, four in a square 216.
+Beaconator uses the cheapest rectangle. Five and six beacons cost the same (both fit a 2x3).
+
+Coverage is the vanilla effect volume: `2r + 1` wide, `r` down, unbounded upwards. The maths
+lives in `xyz.w4ve.beaconator.model`, with no Minecraft code, and is unit tested against a real
+208 node perimeter.
 
 ## Building
 
@@ -254,5 +154,4 @@ The jar lands in `build/libs/`.
 
 ## Licence
 
-MIT. Behaviour was taken as inspiration from the schematic and info HUD mods everyone uses, but
-no code was copied from any of them.
+MIT. Inspired by the schematic and info HUD mods everyone uses; no code was copied from them.
